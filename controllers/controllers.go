@@ -12,7 +12,9 @@ import (
 )
 
 var router = mux.NewRouter()
-var fileNames = map[string]string{"py": "app.py", "c": "app.c", "cpp": "app.cpp"}
+
+// TODO send correct filename from app
+var fileNames = map[string]string{"py": "app.py", "c": "app.c", "cpp": "app.cpp", "java": "Application.java"}
 
 func Router() *mux.Router {
 	return router

@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	router.HandleFunc("/run", run)
+	router.HandleFunc("/simple", run)
 }
 
 func run(w http.ResponseWriter, r *http.Request) {

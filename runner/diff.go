@@ -123,6 +123,8 @@ func compare(want, have io.Reader) ([]int, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+	w = bytes.Replace(w, []byte("\r\n"), []byte("\n"), -1)
+	h = bytes.Replace(h, []byte("\r\n"), []byte("\n"), -1)
 	wb := bytes.Split(w, []byte("\n"))
 	hb := bytes.Split(h, []byte("\n"))
 

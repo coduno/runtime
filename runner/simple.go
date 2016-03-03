@@ -2,6 +2,7 @@ package runner
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"time"
 
@@ -29,6 +30,16 @@ func SimpleRun(ball io.Reader, image string) (testResult model.SimpleTestResult,
 	start := time.Now()
 	if err = dc.StartContainer(c.ID, c.HostConfig); err != nil {
 		return
+	}
+
+	ic, err := dc.InspectContainer(c.ID)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		// fmt.Printf("\n CONFIG IS \n %#v\n", ic.Config)
+		// fmt.Printf("\n NODE IS \n %#v\n", ic.Node)
+		fmt.Printf("\n NS IS \n %#v\n", ic.NetworkSettings.Networks)
+		// fmt.Printf("\n HC IS \n %#v\n", ic.HostConfig)
 	}
 
 	if err = waitForContainer(c.ID); err != nil {

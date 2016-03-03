@@ -16,8 +16,6 @@ func droneCcc(w http.ResponseWriter, r *http.Request) {
 		method:   "POST",
 		files:    true,
 		language: true,
-		test:     true,
-		stdin:    true,
 	}
 	rd, ok := processRequest(w, r, rp)
 	if !ok {

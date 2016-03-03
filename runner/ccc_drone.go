@@ -25,7 +25,7 @@ func CCCRunWithOutput(ball, test io.Reader, image string) (ts model.TestStats, e
 }
 
 func CCCRun(ball io.Reader, image string) (testResult model.SimpleTestResult, err error) {
-	sc, err := cccDroneSimulator()
+	sc, err := cccDroneSimulator("level1")
 	if err != nil {
 		panic(err)
 	}
@@ -90,12 +90,23 @@ func CCCRun(ball io.Reader, image string) (testResult model.SimpleTestResult, er
 	return
 }
 
-func cccDroneSimulator() (c *docker.Container, err error) {
+func cccDroneSimulator(level string) (c *docker.Container, err error) {
 	var image = "coduno/ccc_drone_simulator"
 	if err = prepareImage(image); err != nil {
 		panic(err)
 	}
-	if c, err = itoc(image); err != nil {
+	c, err = dc.CreateContainer(docker.CreateContainerOptions{
+		Config: &docker.Config{
+			Image:      image,
+			Entrypoint: []string{"/bin/bash", "-c", "java -jar simulator.jar " + level + " tcp 7000"},
+		},
+		HostConfig: &docker.HostConfig{
+			Privileged:  false,
+			NetworkMode: "bridge",
+			Memory:      0, // TODO(flowlo): Limit memory
+		},
+	})
+	if err != nil {
 		return
 	}
 	if err = dc.StartContainer(c.ID, c.HostConfig); err != nil {

@@ -8,12 +8,12 @@ import (
 )
 
 func init() {
-	router.Handle("/diff", Adapt(Wrap(diffRun), Test(), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/io", Adapt(Wrap(ioRun), Stdin(), Test(), Files(true), Language(supportedLanguages), Method("POST")))
 }
 
-func diffRun(rd requestData, w http.ResponseWriter, r *http.Request) {
+func ioRun(rd requestData, w http.ResponseWriter, r *http.Request) {
 	image := "coduno/fingerprint-" + rd.language
-	tr, err := runner.DiffRun(rd.ball, rd.test, image)
+	tr, err := runner.IORun(rd.ball, rd.test, rd.stdin, image)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return

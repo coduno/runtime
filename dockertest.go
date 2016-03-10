@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"os"
 
 	"github.com/coduno/runtime-dummy/controllers"
 	"google.golang.org/appengine"
@@ -9,6 +10,6 @@ import (
 
 func main() {
 	http.Handle("/", controllers.Router())
-//	log.Fatal(http.ListenAndServe(":8081", nil))
+	os.Setenv("PORT", "8081")
 	appengine.Main()
 }

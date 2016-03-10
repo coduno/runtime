@@ -1,53 +1,48 @@
 package controllers
 
 import (
-	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"strconv"
+	"time"
 
 	storage "github.com/coduno/runtime-dummy/storage/google"
 	"google.golang.org/appengine"
-	"golang.org/x/net/context"
-	"golang.org/x/oauth2/google"
-	"google.golang.org/cloud"
-	"time"
-	"bytes"
 )
 
-var cloudClient *http.Client
-
 func init() {
-	router.Handle("/gcs", Adapt(Wrap(upload), Method("GET")))
-	var err error
-	cloudClient, err = google.DefaultClient(context.Background())
+	router.Handle("/gcs", Wrap(read))
+}
+
+func read(rd requestData, w http.ResponseWriter, r *http.Request) {
+	ctx := appengine.NewContext(r)
+
+	p := storage.NewProvider()
+	o, err := p.Create(ctx, "coduno/testfile2.txt", time.Hour, "text/plain")
 	if err != nil {
-		panic(err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-}
-const projID = "coduno"
 
-func CloudContext(parent context.Context) context.Context {
-	if parent == nil {
-		return cloud.NewContext(projID, cloudClient)
-	}
-	return cloud.WithContext(parent, projID, cloudClient)
-}
+	switch r.Method {
+	case "GET":
+		b, err := ioutil.ReadAll(o)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Write(b)
+	case "POST":
+		n, err := io.WriteString(o, "test string")
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		o.Close()
+		w.Write([]byte("we have written " + strconv.Itoa(n) + " bytes"))
 
-func upload(rd requestData, w http.ResponseWriter, r *http.Request) {
-	ctx := appengine.NewContext(r);
-
-	p := storage.NewProvider();
-	o, err := p.Create(ctx, "coduno/testfile.txt", time.Hour, "text/plain");
-	if (err != nil){
-		fmt.Printf("Error", err);
-	}
-	b := new([]byte);
-	if nr, err := o.Read(*b); err == nil {
-		fmt.Println("Was an error ", err);
-	}else {
-		fmt.Println("**************************************************************")
-		fmt.Println("All good, Nr read = ", nr);
-		buf := bytes.NewBuffer(*b);
-		buf.String()
-		fmt.Println("Smth", buf.String());
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}
 }

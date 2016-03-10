@@ -6,7 +6,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/coduno/api/storage"
+	"github.com/coduno/runtime-dummy/storage"
 )
 
 type provider map[string]*object

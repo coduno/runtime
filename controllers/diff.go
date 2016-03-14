@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	router.Handle("/diff", Adapt(Wrap(diffRun), Test(), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/diff", Adapt(Wrap(diffRun), Test(), Files(), Language(supportedLanguages), Method("POST")))
 }
 
 func diffRun(rd requestData, w http.ResponseWriter, r *http.Request) {

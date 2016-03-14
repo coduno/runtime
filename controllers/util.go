@@ -8,6 +8,8 @@ import (
 	"io/ioutil"
 	"mime/multipart"
 	"os"
+
+	"github.com/coduno/runtime-dummy/storage"
 )
 
 // TODO send correct filename from app
@@ -56,6 +58,29 @@ func maketar(fh *multipart.FileHeader, fileName string) (ball io.Reader, err err
 	}
 	io.Copy(tarw, f)
 	f.Close()
+
+	ball = bytes.NewReader(buf.Bytes())
+	return
+}
+
+func gcsmaketar(o storage.Object, fileName string) (ball io.Reader, err error) {
+	buf := new(bytes.Buffer)
+	tarw := tar.NewWriter(buf)
+
+	b, err := ioutil.ReadAll(o)
+	if err != nil {
+		o.Close()
+		return nil, err
+	}
+	if err = tarw.WriteHeader(&tar.Header{
+		Name: fileName,
+		Mode: 0600,
+		Size: int64(len(b)),
+	}); err != nil {
+		o.Close()
+	}
+	io.WriteString(tarw, string(b))
+	o.Close()
 
 	ball = bytes.NewReader(buf.Bytes())
 	return

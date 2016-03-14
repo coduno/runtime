@@ -8,8 +8,8 @@ import (
 )
 
 func init() {
-	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Test(), Files(true), Language(supportedLanguages), Method("POST")))
-	router.Handle("/cccdronerun", Adapt(Wrap(droneCccRun), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Test(), Files(), Language(supportedLanguages), Method("POST")))
+	router.Handle("/cccdronerun", Adapt(Wrap(droneCccRun), Files(), Language(supportedLanguages), Method("POST")))
 }
 
 func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {

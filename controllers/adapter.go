@@ -1,6 +1,12 @@
 package controllers
 
-import "net/http"
+import (
+	"net/http"
+	"time"
+
+	s "github.com/coduno/runtime-dummy/storage/google"
+	"google.golang.org/appengine"
+)
 
 type Adapter func(hw *wrapper)
 
@@ -18,33 +24,48 @@ func Method(method string) Adapter {
 	}
 }
 
-func Files(makeTar bool) Adapter {
+func Files() Adapter {
 	return func(hw *wrapper) {
 		oldWrapper := hw.h
 		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
-			if err := r.ParseMultipartForm(16 << 20); err != nil {
-				http.Error(w, "could not parse multipart form: "+err.Error(), http.StatusBadRequest)
-				return
-			}
+			submissionPath := r.FormValue("files_gcs")
+			if submissionPath != "" {
+				ctx := appengine.NewContext(r)
 
-			files, found := r.MultipartForm.File["files"]
-			if !found {
-				http.Error(w, "missing files", http.StatusBadRequest)
-				return
-			}
-			if len(files) != 1 {
-				http.Error(w, "we currently support only single file uploads", http.StatusBadRequest)
-				return
-			}
-			if makeTar {
-				ball, err := maketar(files[0], fileNames[rd.language])
+				p := s.NewProvider()
+				o, err := p.Create(ctx, s.SubmissionsBucket()+"/"+submissionPath, time.Hour, "text/plain")
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+
+				ball, err := gcsmaketar(o, fileNames[rd.language])
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
 				rd.ball = ball
 			} else {
-				rd.files = files
+				if err := r.ParseMultipartForm(16 << 20); err != nil {
+					http.Error(w, "could not parse multipart form: "+err.Error(), http.StatusBadRequest)
+					return
+				}
+
+				files, found := r.MultipartForm.File["files"]
+				if !found {
+					http.Error(w, "missing files", http.StatusBadRequest)
+					return
+				}
+				if len(files) != 1 {
+					http.Error(w, "we currently support only single file uploads", http.StatusBadRequest)
+					return
+				}
+				ball, err := maketar(files[0], fileNames[rd.language])
+				if err != nil {
+					http.Error(w, err.Error(), http.StatusInternalServerError)
+					return
+				}
+				rd.ball = ball
 			}
 			oldWrapper(rd, w, r)
 		}
@@ -82,12 +103,15 @@ func Test() Adapter {
 				http.Error(w, "test path missing.", http.StatusBadRequest)
 				return
 			}
-			test, err := getFile(testPath)
+			ctx := appengine.NewContext(r)
+
+			p := s.NewProvider()
+			o, err := p.Create(ctx, s.TestsBucket()+"/"+testPath, time.Hour, "text/plain")
 			if err != nil {
-				http.Error(w, "get test file error: "+err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-			rd.test = test
+			rd.test = o
 			oldWrapper(rd, w, r)
 		}
 		hw.h = h

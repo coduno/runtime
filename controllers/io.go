@@ -8,7 +8,7 @@ import (
 )
 
 func init() {
-	router.Handle("/io", Adapt(Wrap(ioRun), Stdin(), Test(), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/io", Adapt(Wrap(ioRun), Stdin(), Test(), Files(), Language(supportedLanguages), Method("POST")))
 }
 
 func ioRun(rd requestData, w http.ResponseWriter, r *http.Request) {

@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/coduno/runtime-dummy/env"
 	"github.com/fsouza/go-dockerclient"
 )
 
@@ -19,12 +20,15 @@ type waitResult struct {
 
 func init() {
 	var err error
-	// path := os.Getenv("DOCKER_CERT_PATH")
-	path := "C:\\Users\\vbalan\\.docker\\machine\\machines\\default"
-	ca := fmt.Sprintf("%s/ca.pem", path)
-	cert := fmt.Sprintf("%s/cert.pem", path)
-	key := fmt.Sprintf("%s/key.pem", path)
-	dc, err = docker.NewTLSClient("http://192.168.99.100:2376", cert, key, ca)
+	if !env.IsDevAppServer() {
+		dc, err = docker.NewClientFromEnv()
+	} else {
+		path := os.Getenv("DOCKER_CERT_PATH")
+		ca := fmt.Sprintf("%s/ca.pem", path)
+		cert := fmt.Sprintf("%s/cert.pem", path)
+		key := fmt.Sprintf("%s/key.pem", path)
+		dc, err = docker.NewTLSClient("http://192.168.99.100:2376", cert, key, ca)
+	}
 	if err != nil {
 		panic(err)
 	}

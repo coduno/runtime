@@ -2,7 +2,6 @@ package controllers
 
 import (
 	"io"
-	"mime/multipart"
 	"net/http"
 
 	"github.com/gorilla/mux"
@@ -14,7 +13,6 @@ type requestParams struct {
 }
 
 type requestData struct {
-	files       []*multipart.FileHeader
 	ball        io.Reader
 	language    string
 	test, stdin io.Reader

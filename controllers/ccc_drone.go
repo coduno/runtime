@@ -2,19 +2,25 @@ package controllers
 
 import (
 	"encoding/json"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/coduno/runtime-dummy/runner"
 )
 
 func init() {
-	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Test(), Files(), Language(supportedLanguages), Method("POST")))
+	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Files(), Language(supportedLanguages), Method("POST")))
 	router.Handle("/cccdronerun", Adapt(Wrap(droneCccRun), Files(), Language(supportedLanguages), Method("POST")))
 }
 
 func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
-	image := "coduno/fingerprint-" + rd.language
-	tr, err := runner.CCCRunWithOutput(rd.ball, rd.test, image)
+	params, err := cccParams(r, rd)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tr, err := runner.CCCTest(rd.ball, params)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return
@@ -23,11 +29,46 @@ func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
 }
 
 func droneCccRun(rd requestData, w http.ResponseWriter, r *http.Request) {
-	image := "coduno/fingerprint-" + rd.language
-	tr, err := runner.CCCRun(rd.ball, image)
+	params, err := cccParams(r, rd)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	tr, err := runner.CCCRun(rd.ball, params)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 	json.NewEncoder(w).Encode(tr)
+}
+
+func cccParams(r *http.Request, rd requestData) (p runner.CCCParams, err error) {
+	p.Image = "coduno/fingerprint-" + rd.language
+	if r.FormValue("test") == "" {
+		return p, errors.New("invalid test value")
+	}
+	test, err := strconv.Atoi(r.FormValue("test"))
+	if err != nil {
+		return p, err
+	}
+	if test < 1 || test > 4 {
+		return p, errors.New("invalid test value")
+	}
+	p.Test = strconv.Itoa(test)
+	if r.FormValue("level") == "" {
+		return p, errors.New("invalid level value")
+	}
+	level, err := strconv.Atoi(r.FormValue("level"))
+	if err != nil {
+		return p, err
+	}
+	if level < 1 || level > 7 {
+		return p, errors.New("invalid level value")
+	}
+	p.Level = strconv.Itoa(level)
+	if r.FormValue("output_test") == "true" {
+		p.Validate = true
+	}
+
+	return
 }

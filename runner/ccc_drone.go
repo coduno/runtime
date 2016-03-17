@@ -3,118 +3,121 @@ package runner
 import (
 	"bytes"
 	"io"
-	"time"
 
 	"github.com/coduno/runtime-dummy/model"
-	"github.com/fsouza/go-dockerclient"
 )
 
-func CCCRunWithOutput(ball, test io.Reader, image string) (ts model.TestStats, err error) {
-	var str model.SimpleTestResult
-	str, err = CCCRun(ball, image)
-	if err != nil {
-		return
-	}
-	tr := model.DiffTestResult{
-		SimpleTestResult: str,
-		Endpoint:         "diff-result",
-	}
-
-	ts, err = processDiffResults(&tr, test)
-	return
+type CCCParams struct {
+	Image, Level, Test string
+	Validate           bool
 }
 
-func CCCRun(ball io.Reader, image string) (testResult model.SimpleTestResult, err error) {
-	sc, err := cccDroneSimulator("level1")
+func cccValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
+	runner := &BestDockerRunner{
+		config: dockerConfig{
+			image:       "flowlo/coduno:simulator",
+			openStdin:   true,
+			stdinOnce:   true,
+			networkMode: "none",
+			cmd:         []string{"0", p.Level, p.Test},
+		}}
+	if err = runner.createContainer(); err != nil {
+		return
+	}
+	if err = runner.start(); err != nil {
+		return
+	}
+	if err = runner.attach(ball); err != nil {
+		return
+	}
+	if err = runner.wait(); err != nil {
+		return
+	}
+	str, err := runner.logs()
 	if err != nil {
-		panic(err)
+		return ts, err
 	}
-	if err = prepareImage(image); err != nil {
-		panic(err)
-	}
-	var c *docker.Container
-	c, err = dc.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image:     image,
-			OpenStdin: true,
-			StdinOnce: true,
-		},
-		HostConfig: &docker.HostConfig{
-			Privileged:  false,
-			NetworkMode: "bridge",
-			Memory:      0, // TODO(flowlo): Limit memory
-		},
-	})
-	if err != nil {
+	if err = runner.inspect(); err != nil {
 		return
 	}
-
-	err = dc.UploadToContainer(c.ID, docker.UploadToContainerOptions{
-		Path:        "/run",
-		InputStream: ball,
-	})
-	if err != nil {
-		return
-	}
-
-	network := sc.NetworkSettings.Networks["bridge"]
-
-	start := time.Now()
-	if err = dc.StartContainer(c.ID, c.HostConfig); err != nil {
-		return
-	}
-	err = dc.AttachToContainer(docker.AttachToContainerOptions{
-		Container:   c.ID,
-		InputStream: bytes.NewReader([]byte(network.IPAddress)),
-		Stdin:       true,
-		Stream:      true,
-	})
-
-	if err = waitForContainer(c.ID); err != nil {
-		return
-	}
-	end := time.Now()
-
-	stdout, stderr := new(bytes.Buffer), new(bytes.Buffer)
-	if stdout, stderr, err = getLogs(c.ID); err != nil {
-		return
-	}
-
-	testResult = model.SimpleTestResult{
-		Stdout: stdout.String(),
-		Stderr: stderr.String(),
-		Start:  start,
-		End:    end,
-	}
-
-	return
+	return model.TestStats{
+		Failed: runner.c.State.ExitCode == 0,
+		Stdout: str.Stdout,
+		Stderr: str.Stderr,
+	}, nil
 }
 
-func cccDroneSimulator(level string) (c *docker.Container, err error) {
-	var image = "coduno/ccc_drone_simulator"
-	if err = prepareImage(image); err != nil {
-		panic(err)
+func CCCTest(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
+	if p.Validate {
+		return cccValidate(ball, p)
+	} else {
+		var str model.SimpleTestResult
+		ccc := &BestDockerRunner{
+			config: dockerConfig{
+				image:       "flowlo/coduno:simulator",
+				networkMode: "bridge",
+				cmd:         []string{"7000", p.Level, p.Test},
+			}}
+
+		str, err = normalCCCRun(ccc, ball, p.Image)
+		if err != nil {
+			return ts, err
+		}
+		if err = ccc.inspect(); err != nil {
+			return
+		}
+		return model.TestStats{
+			Failed: ccc.c.State.ExitCode == 0,
+			Stdout: str.Stdout,
+			Stderr: str.Stderr,
+		}, nil
 	}
-	c, err = dc.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image:      image,
-			Entrypoint: []string{"/bin/bash", "-c", "java -jar simulator.jar " + level + " tcp 7000"},
-		},
-		HostConfig: &docker.HostConfig{
-			Privileged:  false,
-			NetworkMode: "bridge",
-			Memory:      0, // TODO(flowlo): Limit memory
-		},
-	})
-	if err != nil {
+
+}
+
+func CCCRun(ball io.Reader, p CCCParams) (testResult model.SimpleTestResult, err error) {
+	ccc := &BestDockerRunner{
+		config: dockerConfig{
+			image:       "flowlo/coduno:simulator",
+			networkMode: "bridge",
+			cmd:         []string{"7000", p.Level, "1"},
+		}}
+	return normalCCCRun(ccc, ball, p.Image)
+}
+
+func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (testResult model.SimpleTestResult, err error) {
+	if err = ccc.createContainer(); err != nil {
 		return
 	}
-	if err = dc.StartContainer(c.ID, c.HostConfig); err != nil {
+	if err = ccc.start(); err != nil {
 		return
 	}
-	sc, err := dc.InspectContainer(c.ID)
-	if err != nil {
-		panic(err)
+	if err = ccc.inspect(); err != nil {
+		return
 	}
-	return sc, nil
+	runner := &BestDockerRunner{
+		config: dockerConfig{
+			image:       image,
+			networkMode: "bridge",
+			openStdin:   true,
+			stdinOnce:   true,
+		}}
+	if err = runner.createContainer(); err != nil {
+		return
+	}
+	if err = runner.upload(ball); err != nil {
+		return
+	}
+	if err = runner.start(); err != nil {
+		return
+	}
+	network := ccc.c.NetworkSettings.Networks["bridge"]
+	if err = runner.attach(bytes.NewReader([]byte(network.IPAddress))); err != nil {
+		return
+	}
+	if err = runner.wait(); err != nil {
+		return
+	}
+
+	return runner.logs()
 }

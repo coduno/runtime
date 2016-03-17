@@ -18,7 +18,6 @@ func DiffRun(ball, test io.Reader, image string) (ts model.TestStats, err error)
 	}
 	tr := model.DiffTestResult{
 		SimpleTestResult: str,
-		Endpoint:         "diff-result",
 	}
 
 	ts, err = processDiffResults(&tr, test)

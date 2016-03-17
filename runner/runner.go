@@ -4,14 +4,25 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"time"
 
 	"github.com/coduno/runtime-dummy/env"
+	"github.com/coduno/runtime-dummy/model"
 	"github.com/fsouza/go-dockerclient"
 )
 
 var dc *docker.Client
+
+type dockerConfig struct {
+	image       string
+	entrypoint  []string
+	cmd         []string
+	networkMode string
+	openStdin   bool
+	stdinOnce   bool
+}
 
 type waitResult struct {
 	ExitCode int
@@ -34,8 +45,17 @@ func init() {
 	}
 }
 
-func prepareImage(name string) (err error) {
-	if _, err = dc.InspectImage(name); err == nil {
+type runInfo struct {
+	start, end time.Time
+}
+type BestDockerRunner struct {
+	c      *docker.Container
+	config dockerConfig
+	info   runInfo
+}
+
+func (r *BestDockerRunner) prepare() (err error) {
+	if _, err = dc.InspectImage(r.config.image); err == nil {
 		return nil
 	}
 
@@ -44,30 +64,59 @@ func prepareImage(name string) (err error) {
 	}
 
 	err = dc.PullImage(docker.PullImageOptions{
-		Repository:   name,
+		Repository:   r.config.image,
 		OutputStream: os.Stderr,
 	}, docker.AuthConfiguration{})
 	return
 }
 
-func itoc(image string) (*docker.Container, error) {
+func (r *BestDockerRunner) createContainer() (err error) {
+	if err := r.prepare(); err != nil {
+		return err
+	}
 	// TODO(victorbalan): Pass the memory limit from test
-	return dc.CreateContainer(docker.CreateContainerOptions{
+	r.c, err = dc.CreateContainer(docker.CreateContainerOptions{
 		Config: &docker.Config{
-			Image: image,
+			Image:      r.config.image,
+			OpenStdin:  r.config.openStdin,
+			StdinOnce:  r.config.stdinOnce,
+			Entrypoint: r.config.entrypoint,
+			Cmd:        r.config.cmd,
 		},
 		HostConfig: &docker.HostConfig{
 			Privileged:  false,
-			NetworkMode: "none",
+			NetworkMode: r.config.networkMode,
 			Memory:      0, // TODO(flowlo): Limit memory
 		},
 	})
+	return err
 }
 
-func waitForContainer(cID string) (err error) {
+func (r *BestDockerRunner) upload(ball io.Reader) error {
+	return dc.UploadToContainer(r.c.ID, docker.UploadToContainerOptions{
+		Path:        "/run",
+		InputStream: ball,
+	})
+}
+
+func (r *BestDockerRunner) start() error {
+	r.info.start = time.Now()
+	return dc.StartContainer(r.c.ID, r.c.HostConfig)
+}
+
+func (r *BestDockerRunner) attach(stream io.Reader) error {
+	return dc.AttachToContainer(docker.AttachToContainerOptions{
+		Container:   r.c.ID,
+		InputStream: stream,
+		Stdin:       true,
+		Stream:      true,
+	})
+}
+
+func (r *BestDockerRunner) wait() (err error) {
 	waitc := make(chan waitResult)
 	go func() {
-		exitCode, err := dc.WaitContainer(cID)
+		exitCode, err := dc.WaitContainer(r.c.ID)
 		waitc <- waitResult{exitCode, err}
 	}()
 
@@ -75,22 +124,43 @@ func waitForContainer(cID string) (err error) {
 	select {
 	case res = <-waitc:
 	case <-time.After(time.Minute):
-		err = errors.New("execution timed out")
-		return
+		return errors.New("execution timed out")
 	}
 
-	return res.Err
+	if res.Err != nil {
+		return res.Err
+	}
+	r.info.end = time.Now()
+	return nil
 }
 
-func getLogs(cID string) (stdout, stderr *bytes.Buffer, err error) {
-	stdout = new(bytes.Buffer)
-	stderr = new(bytes.Buffer)
+func (r *BestDockerRunner) logs() (str model.SimpleTestResult, err error) {
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
 	err = dc.Logs(docker.LogsOptions{
-		Container:    cID,
+		Container:    r.c.ID,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
 		Stdout:       true,
 		Stderr:       true,
 	})
-	return
+	if err != nil {
+		return
+	}
+
+	return model.SimpleTestResult{
+		Stdout: stdout.String(),
+		Stderr: stderr.String(),
+		Start:  r.info.start,
+		End:    r.info.end,
+	}, nil
+}
+
+func (r *BestDockerRunner) inspect() error {
+	c, err := dc.InspectContainer(r.c.ID)
+	if err != nil {
+		return err
+	}
+	r.c = c
+	return nil
 }

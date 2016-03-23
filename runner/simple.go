@@ -3,7 +3,7 @@ package runner
 import (
 	"io"
 
-	"github.com/coduno/runtime-dummy/model"
+	"github.com/coduno/runtime/model"
 )
 
 func SimpleRun(ball io.Reader, image string) (testResult model.SimpleTestResult, err error) {

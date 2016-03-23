@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"time"
 
-	storage "github.com/coduno/runtime-dummy/storage/google"
+	storage "github.com/coduno/runtime/storage/google"
 	"google.golang.org/appengine"
 )
 

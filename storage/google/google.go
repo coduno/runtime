@@ -11,7 +11,7 @@ import (
 
 	"golang.org/x/net/context"
 
-	"github.com/coduno/runtime-dummy/storage"
+	"github.com/coduno/runtime/storage"
 	s "google.golang.org/cloud/storage"
 )
 

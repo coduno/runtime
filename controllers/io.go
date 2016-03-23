@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/coduno/runtime-dummy/runner"
+	"github.com/coduno/runtime/runner"
 )
 
 func init() {

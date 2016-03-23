@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/coduno/runtime-dummy/controllers"
+	"github.com/coduno/runtime/controllers"
 	"google.golang.org/appengine"
 )
 

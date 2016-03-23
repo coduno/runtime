@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/coduno/runtime-dummy/env"
-	"github.com/coduno/runtime-dummy/model"
+	"github.com/coduno/runtime/env"
+	"github.com/coduno/runtime/model"
 	"github.com/fsouza/go-dockerclient"
 )
 

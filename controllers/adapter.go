@@ -4,7 +4,7 @@ import (
 	"net/http"
 	"time"
 
-	s "github.com/coduno/runtime-dummy/storage/google"
+	s "github.com/coduno/runtime/storage/google"
 	"google.golang.org/appengine"
 )
 

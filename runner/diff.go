@@ -7,7 +7,7 @@ import (
 	"io/ioutil"
 	"strings"
 
-	"github.com/coduno/runtime-dummy/model"
+	"github.com/coduno/runtime/model"
 )
 
 func DiffRun(ball, test io.Reader, image string) (ts model.TestStats, err error) {

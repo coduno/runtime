@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"io"
 
-	"github.com/coduno/runtime-dummy/model"
+	"github.com/coduno/runtime/model"
 )
 
 type CCCParams struct {

@@ -9,7 +9,7 @@ import (
 	"mime/multipart"
 	"os"
 
-	"github.com/coduno/runtime-dummy/storage"
+	"github.com/coduno/runtime/storage"
 )
 
 // TODO send correct filename from app

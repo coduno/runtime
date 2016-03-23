@@ -1,6 +1,6 @@
 package google
 
-import "github.com/coduno/runtime-dummy/env"
+import "github.com/coduno/runtime/env"
 
 func SubmissionsBucket() string {
 	if env.IsDevAppServer() {

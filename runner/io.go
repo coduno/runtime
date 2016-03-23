@@ -3,7 +3,7 @@ package runner
 import (
 	"io"
 
-	"github.com/coduno/runtime-dummy/model"
+	"github.com/coduno/runtime/model"
 )
 
 func IORun(ball, test, stdin io.Reader, image string) (tr model.DiffTestResult, err error) {

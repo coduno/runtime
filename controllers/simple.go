@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/coduno/runtime-dummy/runner"
+	"github.com/coduno/runtime/runner"
 )
 
 var supportedLanguages = []string{"py", "c", "cpp", "java", "csharp", "js", "php", "go", "groovy", "scala"}

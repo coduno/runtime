@@ -67,6 +67,9 @@ func (r *BestDockerRunner) prepare() (err error) {
 		Repository:   r.config.image,
 		OutputStream: os.Stderr,
 	}, docker.AuthConfiguration{})
+	if err != nil {
+		err = errors.New("runner.prepare: " + err.Error())
+	}
 	return
 }
 
@@ -92,25 +95,37 @@ func (r *BestDockerRunner) createContainer() (err error) {
 	return err
 }
 
-func (r *BestDockerRunner) upload(ball io.Reader) error {
-	return dc.UploadToContainer(r.c.ID, docker.UploadToContainerOptions{
+func (r *BestDockerRunner) upload(ball io.Reader) (err error) {
+	err = dc.UploadToContainer(r.c.ID, docker.UploadToContainerOptions{
 		Path:        "/run",
 		InputStream: ball,
 	})
+	if err != nil {
+		err = errors.New("runner.upload: " + err.Error())
+	}
+	return
 }
 
-func (r *BestDockerRunner) start() error {
+func (r *BestDockerRunner) start() (err error) {
 	r.info.start = time.Now()
-	return dc.StartContainer(r.c.ID, r.c.HostConfig)
+	err = dc.StartContainer(r.c.ID, r.c.HostConfig)
+	if err != nil {
+		err = errors.New("runner.start: " + err.Error())
+	}
+	return
 }
 
-func (r *BestDockerRunner) attach(stream io.Reader) error {
-	return dc.AttachToContainer(docker.AttachToContainerOptions{
+func (r *BestDockerRunner) attach(stream io.Reader) (err error) {
+	err = dc.AttachToContainer(docker.AttachToContainerOptions{
 		Container:   r.c.ID,
 		InputStream: stream,
 		Stdin:       true,
 		Stream:      true,
 	})
+	if err != nil {
+		err = errors.New("runner.attach: " + err.Error())
+	}
+	return
 }
 
 func (r *BestDockerRunner) wait() (err error) {
@@ -128,7 +143,7 @@ func (r *BestDockerRunner) wait() (err error) {
 	}
 
 	if res.Err != nil {
-		return res.Err
+		return errors.New("runner.wait: " + res.Err.Error())
 	}
 	r.info.end = time.Now()
 	return nil
@@ -145,6 +160,7 @@ func (r *BestDockerRunner) logs() (str model.SimpleTestResult, err error) {
 		Stderr:       true,
 	})
 	if err != nil {
+		err = errors.New("runner.logs: " + err.Error())
 		return
 	}
 
@@ -159,7 +175,7 @@ func (r *BestDockerRunner) logs() (str model.SimpleTestResult, err error) {
 func (r *BestDockerRunner) inspect() error {
 	c, err := dc.InspectContainer(r.c.ID)
 	if err != nil {
-		return err
+		return errors.New("runner.inspect: " + err.Error())
 	}
 	r.c = c
 	return nil

@@ -16,12 +16,14 @@ import (
 var dc *docker.Client
 
 type dockerConfig struct {
-	image       string
-	entrypoint  []string
-	cmd         []string
-	networkMode string
-	openStdin   bool
-	stdinOnce   bool
+	image           string
+	entrypoint      []string
+	cmd             []string
+	networkMode     string
+	openStdin       bool
+	stdinOnce       bool
+	publishAllPorts bool
+	links           []string
 }
 
 type waitResult struct {
@@ -87,9 +89,11 @@ func (r *BestDockerRunner) createContainer() (err error) {
 			Cmd:        r.config.cmd,
 		},
 		HostConfig: &docker.HostConfig{
-			Privileged:  false,
-			NetworkMode: r.config.networkMode,
-			Memory:      64 >> 20, // That's 64MiB.
+			Privileged:      false,
+			NetworkMode:     r.config.networkMode,
+			Links:           r.config.links,
+			PublishAllPorts: r.config.publishAllPorts,
+			Memory:          64 >> 20, // That's 64MiB.
 		},
 	})
 	return err

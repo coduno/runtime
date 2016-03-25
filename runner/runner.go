@@ -87,7 +87,7 @@ func (r *BestDockerRunner) createContainer() (err error) {
 			StdinOnce:  r.config.stdinOnce,
 			Entrypoint: r.config.entrypoint,
 			Cmd:        r.config.cmd,
-			Env:        docker.Env([]string{"CODUNO=true"}),
+			Env:        []string{"CODUNO=true"},
 		},
 		HostConfig: &docker.HostConfig{
 			Privileged:      false,

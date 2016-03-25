@@ -11,7 +11,7 @@ type CCCParams struct {
 	Validate           bool
 }
 
-func cccValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
+func CCCValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 	runner := &BestDockerRunner{
 		config: dockerConfig{
 			image:       "flowlo/coduno:simulator",
@@ -48,30 +48,29 @@ func cccValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 }
 
 func CCCTest(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
-	if p.Validate {
-		return cccValidate(ball, p)
-	} else {
-		var str model.SimpleTestResult
-		ccc := &BestDockerRunner{
-			config: dockerConfig{
-				image:           "flowlo/coduno:simulator",
-				cmd:             []string{p.Level, p.Test, "7000"},
-				publishAllPorts: true,
-			}}
+	var str model.SimpleTestResult
+	ccc := &BestDockerRunner{
+		config: dockerConfig{
+			image:           "flowlo/coduno:simulator",
+			cmd:             []string{p.Level, p.Test, "7000"},
+			publishAllPorts: true,
+		}}
 
-		str, err = normalCCCRun(ccc, ball, p.Image)
-		if err != nil {
-			return ts, err
-		}
-		if err = ccc.inspect(); err != nil {
-			return
-		}
-		return model.TestStats{
-			Failed: ccc.c.State.ExitCode != 0,
-			Stdout: str.Stdout,
-			Stderr: str.Stderr,
-		}, nil
+	str, err = normalCCCRun(ccc, ball, p.Image)
+	if err != nil {
+		return ts, err
 	}
+	if err = ccc.wait(); err != nil {
+		return
+	}
+	if err = ccc.inspect(); err != nil {
+		return
+	}
+	return model.TestStats{
+		Failed: ccc.c.State.ExitCode != 0,
+		Stdout: str.Stdout,
+		Stderr: str.Stderr,
+	}, nil
 }
 
 func CCCRun(ball io.Reader, p CCCParams) (testResult model.SimpleTestResult, err error) {

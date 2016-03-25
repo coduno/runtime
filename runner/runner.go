@@ -89,7 +89,7 @@ func (r *BestDockerRunner) createContainer() (err error) {
 		HostConfig: &docker.HostConfig{
 			Privileged:  false,
 			NetworkMode: r.config.networkMode,
-			Memory:      0, // TODO(flowlo): Limit memory
+			Memory:      64 >> 20, // That's 64MiB.
 		},
 	})
 	return err

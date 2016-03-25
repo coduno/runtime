@@ -1,7 +1,6 @@
 package runner
 
 import (
-	"bytes"
 	"io"
 
 	"github.com/coduno/runtime/model"
@@ -19,7 +18,7 @@ func cccValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 			openStdin:   true,
 			stdinOnce:   true,
 			networkMode: "none",
-			cmd:         []string{"0", p.Level, p.Test},
+			cmd:         []string{p.Level, p.Test, "0"},
 		}}
 	if err = runner.createContainer(); err != nil {
 		return
@@ -41,7 +40,7 @@ func cccValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 		return
 	}
 	return model.TestStats{
-		Failed: runner.c.State.ExitCode == 0,
+		Failed: runner.c.State.ExitCode != 0,
 		Stdout: str.Stdout,
 		Stderr: str.Stderr,
 	}, nil
@@ -54,9 +53,9 @@ func CCCTest(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 		var str model.SimpleTestResult
 		ccc := &BestDockerRunner{
 			config: dockerConfig{
-				image:       "flowlo/coduno:simulator",
-				networkMode: "bridge",
-				cmd:         []string{"7000", p.Level, p.Test},
+				image:           "flowlo/coduno:simulator",
+				cmd:             []string{p.Level, p.Test, "7000"},
+				publishAllPorts: true,
 			}}
 
 		str, err = normalCCCRun(ccc, ball, p.Image)
@@ -67,20 +66,19 @@ func CCCTest(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 			return
 		}
 		return model.TestStats{
-			Failed: ccc.c.State.ExitCode == 0,
+			Failed: ccc.c.State.ExitCode != 0,
 			Stdout: str.Stdout,
 			Stderr: str.Stderr,
 		}, nil
 	}
-
 }
 
 func CCCRun(ball io.Reader, p CCCParams) (testResult model.SimpleTestResult, err error) {
 	ccc := &BestDockerRunner{
 		config: dockerConfig{
-			image:       "flowlo/coduno:simulator",
-			networkMode: "bridge",
-			cmd:         []string{"7000", p.Level, "1"},
+			image:           "flowlo/coduno:simulator",
+			cmd:             []string{p.Level, "1", "7000"},
+			publishAllPorts: true,
 		}}
 	return normalCCCRun(ccc, ball, p.Image)
 }
@@ -97,10 +95,10 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (testResu
 	}
 	runner := &BestDockerRunner{
 		config: dockerConfig{
-			image:       image,
-			networkMode: "bridge",
-			openStdin:   true,
-			stdinOnce:   true,
+			image:     image,
+			openStdin: true,
+			stdinOnce: true,
+			links:     []string{ccc.c.ID + ":simulator"},
 		}}
 	if err = runner.createContainer(); err != nil {
 		return
@@ -109,10 +107,6 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (testResu
 		return
 	}
 	if err = runner.start(); err != nil {
-		return
-	}
-	network := ccc.c.NetworkSettings.Networks["bridge"]
-	if err = runner.attach(bytes.NewReader([]byte(network.IPAddress))); err != nil {
 		return
 	}
 	if err = runner.wait(); err != nil {

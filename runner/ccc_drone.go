@@ -18,8 +18,7 @@ func CCCValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 			openStdin:   true,
 			stdinOnce:   true,
 			networkMode: "none",
-			// NOTE(flowlo): Port < 1 triggers validator mode.
-			cmd: []string{p.Level, p.Test, "-7000"},
+			cmd:         []string{p.Level, p.Test, "0"},
 		}}
 	if err = runner.createContainer(); err != nil {
 		return

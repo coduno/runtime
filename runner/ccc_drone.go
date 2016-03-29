@@ -39,6 +39,10 @@ func CCCValidate(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 	if err = runner.inspect(); err != nil {
 		return
 	}
+
+	// NOTE(flowlo): Errors preventing removal are ignored.
+	runner.remove()
+
 	return model.TestStats{
 		Failed: runner.c.State.ExitCode != 0,
 		Stdout: str.Stdout,
@@ -65,6 +69,10 @@ func CCCTest(ball io.Reader, p CCCParams) (ts model.TestStats, err error) {
 	if err = ccc.inspect(); err != nil {
 		return
 	}
+
+	// NOTE(flowlo): Errors preventing removal are ignored.
+	ccc.remove()
+
 	return model.TestStats{
 		Failed: ccc.c.State.ExitCode != 0,
 		Stdout: str.Stdout,
@@ -111,6 +119,9 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (testResu
 	if err = runner.wait(); err != nil {
 		return
 	}
+
+	// NOTE(flowlo): Errors preventing removal are ignored.
+	runner.remove()
 
 	return runner.logs()
 }

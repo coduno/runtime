@@ -185,3 +185,11 @@ func (r *BestDockerRunner) inspect() error {
 	r.c = c
 	return nil
 }
+
+func (r *BestDockerRunner) remove() error {
+	return dc.RemoveContainer(docker.RemoveContainerOptions{
+		ID:            r.c.ID,
+		RemoveVolumes: true,
+		Force:         true,
+	})
+}

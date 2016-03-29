@@ -47,9 +47,39 @@ func init() {
 	}
 }
 
+func Scrape(d time.Duration) {
+	for {
+		time.Sleep(d / 2)
+
+		cs, err := dc.ListContainers(docker.ListContainersOptions{
+			All:     true,
+			Size:    false,
+			Filters: map[string][]string{"status": {"running"}},
+		})
+
+		if err != nil {
+			continue
+		}
+
+		now := time.Now()
+		for _, c := range cs {
+			if now.Sub(time.Unix(c.Created, 0)) < d {
+				continue
+			}
+
+			dc.RemoveContainer(docker.RemoveContainerOptions{
+				ID:            c.ID,
+				RemoveVolumes: true,
+				Force:         true,
+			})
+		}
+	}
+}
+
 type runInfo struct {
 	start, end time.Time
 }
+
 type BestDockerRunner struct {
 	c      *docker.Container
 	config dockerConfig

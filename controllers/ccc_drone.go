@@ -10,8 +10,8 @@ import (
 )
 
 func init() {
-	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Files(), Language(supportedLanguages), Method("POST")))
-	router.Handle("/cccdronerun", Adapt(Wrap(droneCccRun), Files(), Language(supportedLanguages), Method("POST")))
+	router.Handle("/cccdronetest", Adapt(Wrap(droneCccTest), Files(false), Language(supportedLanguages), Method("POST")))
+	router.Handle("/cccdronerun", Adapt(Wrap(droneCccRun), Files(true), Language(supportedLanguages), Method("POST")))
 }
 
 func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
@@ -20,7 +20,22 @@ func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	tr, err := runner.CCCTest(rd.ball, params)
+	if params.Validate {
+		tr, err := runner.CCCValidate(rd.ball, params)
+		if err != nil {
+			http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
+			return
+		}
+		json.NewEncoder(w).Encode(tr)
+		return
+	}
+	ball, err := readermaketar(rd.ball, fileNames[rd.language])
+	if err != nil {
+		http.Error(w, "reader maketar error: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tr, err := runner.CCCTest(ball, params)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return

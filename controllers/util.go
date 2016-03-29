@@ -62,6 +62,26 @@ func maketar(fh *multipart.FileHeader, fileName string) (ball io.Reader, err err
 	ball = bytes.NewReader(buf.Bytes())
 	return
 }
+func readermaketar(o io.Reader, fileName string) (ball io.Reader, err error) {
+	buf := new(bytes.Buffer)
+	tarw := tar.NewWriter(buf)
+
+	b, err := ioutil.ReadAll(o)
+	if err != nil {
+		return nil, err
+	}
+	if err = tarw.WriteHeader(&tar.Header{
+		Name: fileName,
+		Mode: 0600,
+		Size: int64(len(b)),
+	}); err != nil {
+		return nil, err
+	}
+	io.WriteString(tarw, string(b))
+
+	ball = bytes.NewReader(buf.Bytes())
+	return
+}
 
 func gcsmaketar(o storage.Object, fileName string) (ball io.Reader, err error) {
 	buf := new(bytes.Buffer)
@@ -92,4 +112,12 @@ func getFile(filename string) (io.Reader, error) {
 		return nil, err
 	}
 	return bytes.NewReader(b), nil
+}
+
+func getReader(f *multipart.FileHeader) (io.Reader, error) {
+	file, err := f.Open()
+	if err != nil {
+		return nil, err
+	}
+	return file, nil
 }

@@ -24,7 +24,9 @@ func Method(method string) Adapter {
 	}
 }
 
-func Files() Adapter {
+// TODO(victorbalan): refactor this, split into multiple functions, adapt for
+// multiple files
+func Files(tar bool) Adapter {
 	return func(hw *wrapper) {
 		oldWrapper := hw.h
 		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
@@ -39,12 +41,15 @@ func Files() Adapter {
 					return
 				}
 
-				ball, err := gcsmaketar(o, fileNames[rd.language])
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
+				rd.ball = o
+				if tar {
+					ball, err := gcsmaketar(o, fileNames[rd.language])
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					rd.ball = ball
 				}
-				rd.ball = ball
 			} else {
 				if err := r.ParseMultipartForm(16 << 20); err != nil {
 					http.Error(w, "could not parse multipart form: "+err.Error(), http.StatusBadRequest)
@@ -60,12 +65,21 @@ func Files() Adapter {
 					http.Error(w, "we currently support only single file uploads", http.StatusBadRequest)
 					return
 				}
-				ball, err := maketar(files[0], fileNames[rd.language])
-				if err != nil {
-					http.Error(w, err.Error(), http.StatusInternalServerError)
-					return
+				if tar {
+					ball, err := maketar(files[0], fileNames[rd.language])
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					rd.ball = ball
+				} else {
+					file, err := getReader(files[0])
+					if err != nil {
+						http.Error(w, err.Error(), http.StatusInternalServerError)
+						return
+					}
+					rd.ball = file
 				}
-				rd.ball = ball
 			}
 			oldWrapper(rd, w, r)
 		}

@@ -3,6 +3,7 @@ package controllers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -26,6 +27,7 @@ func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 			return
 		}
+		log.Printf("validate response: #%v", tr)
 		json.NewEncoder(w).Encode(tr)
 		return
 	}
@@ -40,6 +42,7 @@ func droneCccTest(rd requestData, w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	log.Printf("validate response: #%v", tr)
 	json.NewEncoder(w).Encode(tr)
 }
 

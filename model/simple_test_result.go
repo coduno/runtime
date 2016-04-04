@@ -3,12 +3,12 @@ package model
 import "time"
 
 type SimpleTestResult struct {
-	Stdout  string `datastore:",noindex",json:stdout",omitempty"`
-	Stderr  string `datastore:",noindex",json:stderr",omitempty"`
-	Exit    string `datastore:",noindex",json:exit",omitempty"`
-	Prepare string `datastore:",noindex",json:prepare",omitempty"`
+	Stdout  string `json:"stdout,omitempty"`
+	Stderr  string `json:"stderr,omitempty"`
+	Exit    string `json:"exit,omitempty"`
+	Prepare string `json:"prepare,omitempty"`
 
 	// Rusage Rusage    `datastore:",noindex",json:",omitempty"`
-	Start time.Time `datastore:",index",json:start",omitempty"`
-	End   time.Time `datastore:",index",json:end",omitempty"`
+	Start time.Time `json:"start,omitempty"`
+	End   time.Time `json:"end,omitempty"`
 }

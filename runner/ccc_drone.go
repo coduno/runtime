@@ -121,7 +121,7 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (testResu
 	}
 
 	// NOTE(flowlo): Errors preventing removal are ignored.
-	runner.remove()
+	defer runner.remove()
 
 	return runner.logs()
 }

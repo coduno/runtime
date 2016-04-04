@@ -10,37 +10,26 @@ import (
 	"github.com/coduno/runtime/model"
 )
 
-func DiffRun(ball, test io.Reader, image string) (ts model.TestStats, err error) {
-	var str model.SimpleTestResult
-	str, err = SimpleRun(ball, image)
+func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) {
+	str, err := SimpleRun(ball, image)
 	if err != nil {
-		return
+		return nil, err
 	}
-	tr := model.DiffTestResult{
-		SimpleTestResult: str,
-	}
-
-	ts, err = processDiffResults(&tr, test)
-	return
+	return processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
 }
 
-func processDiffResults(tr *model.DiffTestResult, want io.Reader) (ts model.TestStats, err error) {
+func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTestResult, error) {
 	have := strings.NewReader(tr.Stdout)
 	diffLines, ok, err := compare(want, have)
 	if err != nil {
-		return
+		return nil, err
 	}
 	tr.DiffLines = diffLines
 	tr.Failed = !ok
 
-	ts = model.TestStats{
-		Stdout: tr.Stdout,
-		Stderr: tr.Stderr,
-		Failed: !ok,
-	}
+	return tr, nil
 
 	// _, err = tr.PutWithParent(ctx, sub.Key)
-	return
 }
 
 func compare(want, have io.Reader) ([]int, bool, error) {

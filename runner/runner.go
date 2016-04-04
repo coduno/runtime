@@ -184,10 +184,10 @@ func (r *BestDockerRunner) wait() (err error) {
 	return nil
 }
 
-func (r *BestDockerRunner) logs() (str model.SimpleTestResult, err error) {
+func (r *BestDockerRunner) logs() (*model.SimpleTestResult, error) {
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
-	err = dc.Logs(docker.LogsOptions{
+	err := dc.Logs(docker.LogsOptions{
 		Container:    r.c.ID,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
@@ -195,11 +195,10 @@ func (r *BestDockerRunner) logs() (str model.SimpleTestResult, err error) {
 		Stderr:       true,
 	})
 	if err != nil {
-		err = errors.New("runner.logs: " + err.Error())
-		return
+		return nil, errors.New("runner.logs: " + err.Error())
 	}
 
-	return model.SimpleTestResult{
+	return &model.SimpleTestResult{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
 		Start:  r.info.start,

@@ -6,6 +6,6 @@ package model
 type DiffTestResult struct {
 	SimpleTestResult
 
-	DiffLines []int `json:"diffLines,omitempty"`
-	Failed    bool  `json:"failed,omitempty"`
+	DiffLines  []int `json:"diffLines,omitempty"`
+	Successful bool  `json:"successful,omitempty"`
 }

@@ -49,9 +49,9 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	runner.remove()
 
 	return &model.TestStats{
-		Failed: runner.c.State.ExitCode != 0,
-		Stdout: str.Stdout,
-		Stderr: str.Stderr,
+		Success: runner.c.State.ExitCode == 0,
+		Stdout:  str.Stdout,
+		Stderr:  str.Stderr,
 	}, nil
 }
 
@@ -78,9 +78,9 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	ccc.remove()
 
 	return &model.TestStats{
-		Failed: ccc.c.State.ExitCode != 0,
-		Stdout: str.Stdout,
-		Stderr: str.Stderr,
+		Success: ccc.c.State.ExitCode == 0,
+		Stdout:  str.Stdout,
+		Stderr:  str.Stderr,
 	}, nil
 }
 

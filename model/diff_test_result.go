@@ -7,5 +7,5 @@ type DiffTestResult struct {
 	SimpleTestResult
 
 	DiffLines []int `json:"diffLines,omitempty"`
-	Failed    bool  `json:"failed,omitempty"`
+	Success   bool  `json:"success,omitempty"`
 }

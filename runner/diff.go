@@ -25,7 +25,7 @@ func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTe
 		return nil, err
 	}
 	tr.DiffLines = diffLines
-	tr.Failed = !ok
+	tr.Success = ok
 
 	return tr, nil
 

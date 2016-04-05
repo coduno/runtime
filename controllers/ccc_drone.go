@@ -65,10 +65,11 @@ func droneCccRun(rd requestData, w http.ResponseWriter, params *runner.CCCParams
 }
 
 func cccParams(r *http.Request, rd requestData, simulatorImage string) (*runner.CCCParams, error) {
+	validate, _ := strconv.ParseBool(r.FormValue("validate"))
 	p := &runner.CCCParams{
 		Image:          "coduno/fingerprint-" + rd.language,
 		SimulatorImage: simulatorImage,
-		Validate:       strconv.ParseBool(r.FormValue("validate")),
+		Validate:       validate,
 		Test:           1,
 	}
 

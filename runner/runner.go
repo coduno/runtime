@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"os"
 	"time"
 
@@ -13,31 +14,23 @@ import (
 	"github.com/fsouza/go-dockerclient"
 )
 
-var dc *docker.Client
+const codunoFlag = "CODUNO=true"
+const memoryLimit = 64 << 20  // That's 64MiB.
+const bufferLimit = 512 << 10 // That's 512KiB, or 0.5MiB.
 
-type dockerConfig struct {
-	image           string
-	entrypoint      []string
-	cmd             []string
-	networkMode     string
-	openStdin       bool
-	stdinOnce       bool
-	publishAllPorts bool
-	links           []string
-}
+var dc *docker.Client
 
 type waitResult struct {
 	ExitCode int
 	Err      error
 }
 
-const bufferLimit = 512 << 10 // That's 512KiB.
-
 func init() {
 	var err error
 	if !env.IsDevAppServer() {
 		dc, err = docker.NewClientFromEnv()
 	} else {
+		// TODO(flowlo): Is this still used?
 		path := os.Getenv("DOCKER_CERT_PATH")
 		ca := fmt.Sprintf("%s/ca.pem", path)
 		cert := fmt.Sprintf("%s/cert.pem", path)
@@ -52,6 +45,7 @@ func init() {
 func Scrape(d time.Duration) {
 	for {
 		time.Sleep(d / 2)
+		log.Println("Scraper woke up.")
 
 		cs, err := dc.ListContainers(docker.ListContainersOptions{
 			All:     true,
@@ -69,103 +63,136 @@ func Scrape(d time.Duration) {
 				continue
 			}
 
-			dc.RemoveContainer(docker.RemoveContainerOptions{
+			err := dc.RemoveContainer(docker.RemoveContainerOptions{
 				ID:            c.ID,
 				RemoveVolumes: true,
 				Force:         true,
 			})
+
+			if err == nil {
+				log.Printf("Scraper removed container %q\n", c.ID)
+			} else {
+				log.Printf("Scraper failed to remove container %q: %s\n", c.ID, err)
+			}
 		}
 	}
 }
 
-type runInfo struct {
-	start, end time.Time
-}
-
 type BestDockerRunner struct {
-	c      *docker.Container
-	config dockerConfig
-	info   runInfo
+	c                *docker.Container
+	config           *docker.Config
+	hostConfig       *docker.HostConfig
+	started, stopped time.Time
+	err              error
 }
 
-func (r *BestDockerRunner) prepare() (err error) {
-	if _, err = dc.InspectImage(r.config.image); err == nil {
-		return nil
+func (r *BestDockerRunner) prepare() *BestDockerRunner {
+	if r.err != nil {
+		return r
+	}
+
+	_, err := dc.InspectImage(r.config.Image)
+	if err == nil {
+		return r
 	}
 
 	if err != docker.ErrNoSuchImage {
-		return
+		log.Printf("Error inspecting image %q: %s\n", r.config.Image, err)
+		r.err = err
+		return r
 	}
 
-	err = dc.PullImage(docker.PullImageOptions{
-		Repository:   r.config.image,
+	r.err = dc.PullImage(docker.PullImageOptions{
+		Repository:   r.config.Image,
 		OutputStream: os.Stderr,
 	}, docker.AuthConfiguration{})
-	if err != nil {
-		err = errors.New("runner.prepare: " + err.Error())
+
+	if r.err != nil {
+		log.Printf("Error pulling image %q: %s\n", r.config.Image, r.err)
 	}
-	return
+	return r
 }
 
-func (r *BestDockerRunner) createContainer() (err error) {
-	if err := r.prepare(); err != nil {
-		return err
+func (r *BestDockerRunner) createContainer() *BestDockerRunner {
+	if r.err != nil {
+		return r
 	}
-	// TODO(victorbalan): Pass the memory limit from test
-	r.c, err = dc.CreateContainer(docker.CreateContainerOptions{
-		Config: &docker.Config{
-			Image:      r.config.image,
-			OpenStdin:  r.config.openStdin,
-			StdinOnce:  r.config.stdinOnce,
-			Entrypoint: r.config.entrypoint,
-			Cmd:        r.config.cmd,
-			Env:        []string{"CODUNO=true"},
-		},
-		HostConfig: &docker.HostConfig{
-			Privileged:      false,
-			NetworkMode:     r.config.networkMode,
-			Links:           r.config.links,
-			PublishAllPorts: r.config.publishAllPorts,
-			Memory:          64 >> 20, // That's 64MiB.
-		},
+
+	if r.config.Env == nil {
+		r.config.Env = []string{codunoFlag}
+	} else {
+		r.config.Env = append(r.config.Env, codunoFlag)
+	}
+
+	r.hostConfig.Privileged = false
+
+	if r.hostConfig.Memory > memoryLimit {
+		r.hostConfig.Memory = memoryLimit
+	}
+
+	r.c, r.err = dc.CreateContainer(docker.CreateContainerOptions{
+		Config:     r.config,
+		HostConfig: r.hostConfig,
 	})
-	return err
+
+	if r.err != nil {
+		log.Printf("Failed to create container: %s\n", r.err)
+	}
+	return r
 }
 
-func (r *BestDockerRunner) upload(ball io.Reader) (err error) {
-	err = dc.UploadToContainer(r.c.ID, docker.UploadToContainerOptions{
+func (r *BestDockerRunner) upload(ball io.Reader) *BestDockerRunner {
+	if r.err != nil {
+		return r
+	}
+
+	r.err = dc.UploadToContainer(r.c.ID, docker.UploadToContainerOptions{
 		Path:        "/run",
 		InputStream: ball,
 	})
-	if err != nil {
-		err = errors.New("runner.upload: " + err.Error())
+
+	if r.err != nil {
+		log.Printf("Failed to upload to container: %s\n", r.err)
 	}
-	return
+	return r
 }
 
-func (r *BestDockerRunner) start() (err error) {
-	r.info.start = time.Now()
-	err = dc.StartContainer(r.c.ID, r.c.HostConfig)
-	if err != nil {
-		err = errors.New("runner.start: " + err.Error())
+func (r *BestDockerRunner) start() *BestDockerRunner {
+	if r.err != nil {
+		return r
 	}
-	return
+
+	r.err = dc.StartContainer(r.c.ID, r.c.HostConfig)
+	if r.err != nil {
+		log.Printf("Failed to start container %q: %s\n", r.c.ID, r.err)
+		return r
+	}
+	r.started = time.Now()
+	return r
 }
 
-func (r *BestDockerRunner) attach(stream io.Reader) (err error) {
-	err = dc.AttachToContainer(docker.AttachToContainerOptions{
+func (r *BestDockerRunner) attach(stream io.Reader) *BestDockerRunner {
+	if r.err != nil {
+		return r
+	}
+
+	r.err = dc.AttachToContainer(docker.AttachToContainerOptions{
 		Container:   r.c.ID,
 		InputStream: stream,
 		Stdin:       true,
 		Stream:      true,
 	})
-	if err != nil {
-		err = errors.New("runner.attach: " + err.Error())
+	if r.err != nil {
+		log.Printf("Failed to attach to container %q: %s\n", r.c.ID, r.err)
 	}
-	return
+	return r
 }
 
-func (r *BestDockerRunner) wait() (err error) {
+func (r *BestDockerRunner) wait() *BestDockerRunner {
+	if r.err != nil {
+		return r
+	}
+
 	waitc := make(chan waitResult)
 	go func() {
 		exitCode, err := dc.WaitContainer(r.c.ID)
@@ -176,59 +203,77 @@ func (r *BestDockerRunner) wait() (err error) {
 	select {
 	case res = <-waitc:
 	case <-time.After(time.Minute):
-		return errors.New("execution timed out")
+		r.err = errors.New("execution timed out")
+		return r
 	}
 
 	if res.Err != nil {
-		return errors.New("runner.wait: " + res.Err.Error())
+		r.err = res.Err
+		return r
 	}
-	r.info.end = time.Now()
-	return nil
+	r.stopped = time.Now()
+	return r
 }
 
 func (r *BestDockerRunner) logs() (*model.SimpleTestResult, error) {
+	if r.err != nil {
+		return nil, r.err
+	}
+
 	stdout := new(bytes.Buffer)
 	stderr := new(bytes.Buffer)
-	err := dc.Logs(docker.LogsOptions{
+	r.err = dc.Logs(docker.LogsOptions{
 		Container:    r.c.ID,
 		OutputStream: stdout,
 		ErrorStream:  stderr,
 		Stdout:       true,
 		Stderr:       true,
 	})
-	if err != nil {
-		return nil, errors.New("runner.logs: " + err.Error())
+	if r.err != nil {
+		log.Printf("Failed to obtain logs from %q: %s\n", r.c.ID, r.err)
+		return nil, r.err
 	}
 
 	if stdout.Len() > bufferLimit {
 		stdout.Truncate(bufferLimit)
+		log.Println("Truncated standard output.")
 	}
 
 	if stderr.Len() > bufferLimit {
 		stderr.Truncate(bufferLimit)
+		log.Println("Truncated standard error.")
 	}
 
 	return &model.SimpleTestResult{
 		Stdout: stdout.String(),
 		Stderr: stderr.String(),
-		Start:  r.info.start,
-		End:    r.info.end,
+		Start:  r.started,
+		End:    r.stopped,
 	}, nil
 }
 
-func (r *BestDockerRunner) inspect() error {
-	c, err := dc.InspectContainer(r.c.ID)
-	if err != nil {
-		return errors.New("runner.inspect: " + err.Error())
+func (r *BestDockerRunner) inspect() *BestDockerRunner {
+	if r.err != nil {
+		return r
 	}
-	r.c = c
-	return nil
+
+	r.c, r.err = dc.InspectContainer(r.c.ID)
+	if r.err != nil {
+		log.Printf("Failed to inspect container %q: %s\n", r.c.ID, r.err)
+	}
+	return r
 }
 
 func (r *BestDockerRunner) remove() error {
-	return dc.RemoveContainer(docker.RemoveContainerOptions{
+	if r.err != nil {
+		return r.err
+	}
+
+	r.err = dc.RemoveContainer(docker.RemoveContainerOptions{
 		ID:            r.c.ID,
 		RemoveVolumes: true,
 		Force:         true,
 	})
+
+	return r.err
 }

@@ -1,19 +1,20 @@
 package main
 
 import (
+	"log"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/coduno/runtime/controllers"
 	"github.com/coduno/runtime/runner"
-	"google.golang.org/appengine"
 )
+
+const sock = ":8081"
 
 func main() {
 	go runner.Scrape(10 * time.Minute)
 
 	http.Handle("/", controllers.Router())
-	os.Setenv("PORT", "8081")
-	appengine.Main()
+	log.Println("Listening at", sock)
+	log.Fatal(http.ListenAndServe(sock, nil))
 }

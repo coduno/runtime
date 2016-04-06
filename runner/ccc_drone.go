@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/coduno/runtime/model"
+	"github.com/fsouza/go-dockerclient"
 )
 
 type CCCParams struct {
@@ -15,33 +16,25 @@ type CCCParams struct {
 
 func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	runner := &BestDockerRunner{
-		config: dockerConfig{
-			image:       p.SimulatorImage,
-			openStdin:   true,
-			stdinOnce:   true,
-			networkMode: "none",
-			cmd:         []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "0"},
+		config: &docker.Config{
+			Image:     p.SimulatorImage,
+			OpenStdin: true,
+			StdinOnce: true,
+			Cmd:       []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "0"},
+		},
+		hostConfig: &docker.HostConfig{
+			NetworkMode: "none",
 		},
 	}
 
-	if err := runner.createContainer(); err != nil {
-		return nil, err
-	}
-	if err := runner.start(); err != nil {
-		return nil, err
-	}
-	if err := runner.attach(ball); err != nil {
-		return nil, err
-	}
-	if err := runner.wait(); err != nil {
-		return nil, err
-	}
+	str, err := runner.
+		createContainer().
+		start().
+		attach(ball).
+		wait().
+		logs()
 
-	str, err := runner.logs()
 	if err != nil {
-		return nil, err
-	}
-	if err := runner.inspect(); err != nil {
 		return nil, err
 	}
 
@@ -57,21 +50,23 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 
 func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	ccc := &BestDockerRunner{
-		config: dockerConfig{
-			image:           p.SimulatorImage,
-			cmd:             []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
-			publishAllPorts: true,
-		}}
+		config: &docker.Config{
+			Image: p.SimulatorImage,
+			Cmd:   []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
+		},
+		hostConfig: &docker.HostConfig{
+			PublishAllPorts: true,
+		},
+	}
 
 	str, err := normalCCCRun(ccc, ball, p.Image)
 	if err != nil {
 		return nil, err
 	}
-	if err := ccc.wait(); err != nil {
-		return nil, err
-	}
-	if err := ccc.inspect(); err != nil {
-		return nil, err
+	ccc.wait()
+
+	if ccc.err != nil {
+		return nil, ccc.err
 	}
 
 	// NOTE(flowlo): Errors preventing removal are ignored.
@@ -86,46 +81,42 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 
 func CCCRun(ball io.Reader, p *CCCParams) (*model.SimpleTestResult, error) {
 	return normalCCCRun(&BestDockerRunner{
-		config: dockerConfig{
-			image:           p.SimulatorImage,
-			cmd:             []string{strconv.Itoa(p.Level), "1", "7000"},
-			publishAllPorts: true,
+		config: &docker.Config{
+			Image: p.SimulatorImage,
+			Cmd:   []string{strconv.Itoa(p.Level), "1", "7000"},
+		},
+		hostConfig: &docker.HostConfig{
+			PublishAllPorts: true,
 		},
 	}, ball, p.Image)
 }
 
 func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (*model.SimpleTestResult, error) {
-	if err := ccc.createContainer(); err != nil {
-		return nil, err
+	ccc.createContainer().start()
+	if ccc.err != nil {
+		return nil, ccc.err
 	}
-	if err := ccc.start(); err != nil {
-		return nil, err
-	}
-	if err := ccc.inspect(); err != nil {
-		return nil, err
-	}
+
 	runner := &BestDockerRunner{
-		config: dockerConfig{
-			image:     image,
-			openStdin: true,
-			stdinOnce: true,
-			links:     []string{ccc.c.ID + ":simulator"},
-		}}
-	if err := runner.createContainer(); err != nil {
-		return nil, err
+		config: &docker.Config{
+			Image:     image,
+			OpenStdin: true,
+			StdinOnce: true,
+		},
+		hostConfig: &docker.HostConfig{
+			Links: []string{ccc.c.ID + ":simulator"},
+		},
 	}
-	if err := runner.upload(ball); err != nil {
-		return nil, err
-	}
-	if err := runner.start(); err != nil {
-		return nil, err
-	}
-	if err := runner.wait(); err != nil {
-		return nil, err
-	}
+
+	tr, err := runner.
+		createContainer().
+		upload(ball).
+		start().
+		wait().
+		logs()
 
 	// NOTE(flowlo): Errors preventing removal are ignored.
 	defer runner.remove()
 
-	return runner.logs()
+	return tr, err
 }

@@ -28,8 +28,6 @@ func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTe
 	tr.Successful = ok
 
 	return tr, nil
-
-	// _, err = tr.PutWithParent(ctx, sub.Key)
 }
 
 func compare(want, have io.Reader) ([]int, bool, error) {

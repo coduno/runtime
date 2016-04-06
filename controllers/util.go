@@ -13,9 +13,18 @@ import (
 )
 
 // TODO send correct filename from app
-var fileNames = map[string]string{"py": "app.py", "c": "app.c", "cpp": "app.cpp",
-	"java": "Application.java", "csharp": "application.cs", "js": "app.js", "php": "app.php", "go": "app.go",
-	"groovy": "app.groovy", "scala": "Application.scala"}
+var fileNames = map[string]string{
+	"py":     "app.py",
+	"c":      "app.c",
+	"cpp":    "app.cpp",
+	"java":   "Application.java",
+	"csharp": "application.cs",
+	"js":     "app.js",
+	"php":    "app.php",
+	"go":     "app.go",
+	"groovy": "app.groovy",
+	"scala":  "Application.scala",
+}
 
 func contains(s string, strings []string) bool {
 	for _, str := range strings {
@@ -62,6 +71,7 @@ func maketar(fh *multipart.FileHeader, fileName string) (ball io.Reader, err err
 	ball = bytes.NewReader(buf.Bytes())
 	return
 }
+
 func readermaketar(o io.Reader, fileName string) (ball io.Reader, err error) {
 	buf := new(bytes.Buffer)
 	tarw := tar.NewWriter(buf)

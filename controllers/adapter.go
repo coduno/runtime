@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"time"
 
+	"golang.org/x/net/context"
+
 	s "github.com/coduno/runtime/storage/google"
-	"google.golang.org/appengine"
 )
 
 type Adapter func(hw *wrapper)
@@ -32,10 +33,8 @@ func Files(tar bool) Adapter {
 		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
 			submissionPath := r.FormValue("files_gcs")
 			if submissionPath != "" {
-				ctx := appengine.NewContext(r)
-
 				p := s.NewProvider()
-				o, err := p.Create(ctx, s.SubmissionsBucket()+"/"+submissionPath, time.Hour, "text/plain")
+				o, err := p.Create(context.TODO(), s.SubmissionsBucket()+"/"+submissionPath, time.Hour, "text/plain")
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -117,10 +116,9 @@ func Test() Adapter {
 				http.Error(w, "test path missing.", http.StatusBadRequest)
 				return
 			}
-			ctx := appengine.NewContext(r)
 
 			p := s.NewProvider()
-			o, err := p.Create(ctx, s.TestsBucket()+"/"+testPath, time.Hour, "text/plain")
+			o, err := p.Create(context.TODO(), s.TestsBucket()+"/"+testPath, time.Hour, "text/plain")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

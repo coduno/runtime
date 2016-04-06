@@ -4,38 +4,29 @@ import (
 	"io"
 
 	"github.com/coduno/runtime/model"
+	"github.com/fsouza/go-dockerclient"
 )
 
 func IORun(ball, test, stdin io.Reader, image string) (*model.DiffTestResult, error) {
 	runner := &BestDockerRunner{
-		config: dockerConfig{
-			image:     image,
-			openStdin: true,
-			stdinOnce: true,
+		config: &docker.Config{
+			Image:     image,
+			OpenStdin: true,
+			StdinOnce: true,
 		},
 	}
-	if err := runner.createContainer(); err != nil {
-		return nil, err
-	}
-	if err := runner.upload(ball); err != nil {
-		return nil, err
-	}
-	if err := runner.start(); err != nil {
-		return nil, err
-	}
-	if err := runner.attach(stdin); err != nil {
-		return nil, err
-	}
-	if err := runner.wait(); err != nil {
-		return nil, err
-	}
-	str, err := runner.logs()
+
+	str, err := runner.
+		createContainer().
+		upload(ball).
+		start().
+		attach(stdin).
+		wait().
+		logs()
+
 	if err != nil {
 		return nil, err
 	}
-	dtr, err := processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
-	if err != nil {
-		return nil, err
-	}
-	return dtr, nil
+
+	return processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
 }

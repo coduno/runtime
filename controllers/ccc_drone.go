@@ -20,6 +20,7 @@ func init() {
 
 func dispatch(simulatorImage string, handler func(rd requestData, w http.ResponseWriter, params *runner.CCCParams)) func(requestData, http.ResponseWriter, *http.Request) {
 	return func(rd requestData, w http.ResponseWriter, r *http.Request) {
+		rd.language = r.FormValue("language")
 		params, err := cccParams(r, rd, simulatorImage)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)

@@ -31,6 +31,8 @@ type waitResult struct {
 	Err      error
 }
 
+const bufferLimit = 512 << 10 // That's 512KiB.
+
 func init() {
 	var err error
 	if !env.IsDevAppServer() {
@@ -196,6 +198,14 @@ func (r *BestDockerRunner) logs() (*model.SimpleTestResult, error) {
 	})
 	if err != nil {
 		return nil, errors.New("runner.logs: " + err.Error())
+	}
+
+	if stdout.Len() > bufferLimit {
+		stdout.Truncate(bufferLimit)
+	}
+
+	if stderr.Len() > bufferLimit {
+		stderr.Truncate(bufferLimit)
 	}
 
 	return &model.SimpleTestResult{

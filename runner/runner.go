@@ -135,7 +135,7 @@ func (r *BestDockerRunner) createContainer() *BestDockerRunner {
 	})
 
 	if r.err != nil {
-		log.Printf("Failed to create container: %s\n", r.err)
+		log.Printf("Failed to create container from image %q: %s\n", r.config.Image, r.err)
 	}
 	return r
 }

@@ -34,6 +34,8 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 		wait().
 		logs()
 
+	runner.inspect()
+
 	if err != nil {
 		return nil, err
 	}
@@ -68,6 +70,8 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	if ccc.err != nil {
 		return nil, ccc.err
 	}
+
+	ccc.inspect()
 
 	// NOTE(flowlo): Errors preventing removal are ignored.
 	ccc.remove()
@@ -114,6 +118,8 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (*model.S
 		start().
 		wait().
 		logs()
+
+	runner.inspect()
 
 	// NOTE(flowlo): Errors preventing removal are ignored.
 	defer runner.remove()

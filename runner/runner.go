@@ -91,14 +91,13 @@ func (r *BestDockerRunner) prepare() *BestDockerRunner {
 		return r
 	}
 
-	_, err := dc.InspectImage(r.config.Image)
-	if err == nil {
+	_, r.err = dc.InspectImage(r.config.Image)
+	if r.err == nil {
 		return r
 	}
 
-	if err != docker.ErrNoSuchImage {
-		log.Printf("Error inspecting image %q: %s\n", r.config.Image, err)
-		r.err = err
+	if r.err != docker.ErrNoSuchImage {
+		log.Printf("Error inspecting image %q: %s\n", r.config.Image, r.err)
 		return r
 	}
 

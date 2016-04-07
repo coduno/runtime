@@ -268,11 +268,22 @@ func (r *BestDockerRunner) remove() error {
 		return r.err
 	}
 
-	r.err = dc.RemoveContainer(docker.RemoveContainerOptions{
+	// NOTE(flowlo): If removal of the container fails,
+	// this does not currupt the instance.
+	return dc.RemoveContainer(docker.RemoveContainerOptions{
 		ID:            r.c.ID,
 		RemoveVolumes: true,
 		Force:         true,
 	})
+}
 
-	return r.err
+func (r *BestDockerRunner) download(path string, w io.Writer) error {
+	if r.err != nil {
+		return r.err
+	}
+
+	return dc.DownloadFromContainer(r.c.ID, docker.DownloadFromContainerOptions{
+		Path:         path,
+		OutputStream: w,
+	})
 }

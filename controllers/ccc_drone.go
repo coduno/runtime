@@ -7,15 +7,16 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/coduno/runtime/model"
 	"github.com/coduno/runtime/runner"
 )
 
 func init() {
-	router.Handle("/drones/test", Adapt(Wrap(dispatch("flowlo/coduno:drones", droneCccTest)), Files(false), Method("POST")))
-	router.Handle("/drones/run", Adapt(Wrap(dispatch("flowlo/coduno:drones", droneCccRun)), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/drones/test", Adapt(Wrap(dispatch("flowlo/coduno:drones", droneCcc)), Files(false), Method("POST")))
+	router.Handle("/drones/run", Adapt(Wrap(dispatch("flowlo/coduno:drones", droneCcc)), Files(true), Language(supportedLanguages), Method("POST")))
 
-	router.Handle("/drones-2d/test", Adapt(Wrap(dispatch("flowlo/coduno:drones-2d", droneCccTest)), Files(false), Method("POST")))
-	router.Handle("/drones-2d/run", Adapt(Wrap(dispatch("flowlo/coduno:drones-2d", droneCccRun)), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/drones-2d/test", Adapt(Wrap(dispatch("flowlo/coduno:drones-2d", droneCcc)), Files(false), Method("POST")))
+	router.Handle("/drones-2d/run", Adapt(Wrap(dispatch("flowlo/coduno:drones-2d", droneCcc)), Files(true), Language(supportedLanguages), Method("POST")))
 }
 
 func dispatch(simulatorImage string, handler func(rd requestData, w http.ResponseWriter, params *runner.CCCParams)) func(requestData, http.ResponseWriter, *http.Request) {
@@ -30,39 +31,22 @@ func dispatch(simulatorImage string, handler func(rd requestData, w http.Respons
 	}
 }
 
-func droneCccTest(rd requestData, w http.ResponseWriter, params *runner.CCCParams) {
+func droneCcc(rd requestData, w http.ResponseWriter, params *runner.CCCParams) {
+	var ts *model.TestStats
+	var err error
+
 	if params.Validate {
-		tr, err := runner.CCCValidate(rd.ball, params)
-		if err != nil {
-			http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
-			return
-		}
-		log.Printf("validate response: %#v", tr)
-		json.NewEncoder(w).Encode(tr)
-		return
-	}
-	ball, err := readermaketar(rd.ball, fileNames[rd.language])
-	if err != nil {
-		http.Error(w, "reader maketar error: "+err.Error(), http.StatusInternalServerError)
-		return
+		ts, err = runner.CCCValidate(rd.ball, params)
+	} else {
+		ts, err = runner.CCCTest(rd.ball, params)
 	}
 
-	tr, err := runner.CCCTest(ball, params)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
-	log.Printf("validate response: %#v", tr)
-	json.NewEncoder(w).Encode(tr)
-}
-
-func droneCccRun(rd requestData, w http.ResponseWriter, params *runner.CCCParams) {
-	tr, err := runner.CCCRun(rd.ball, params)
-	if err != nil {
-		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)
-		return
-	}
-	json.NewEncoder(w).Encode(tr)
+	log.Printf("Responding: %#v\n", ts)
+	json.NewEncoder(w).Encode(ts)
 }
 
 func cccParams(r *http.Request, rd requestData, simulatorImage string) (*runner.CCCParams, error) {
@@ -89,7 +73,7 @@ func cccParams(r *http.Request, rd requestData, simulatorImage string) (*runner.
 		return p, nil
 	}
 
-	p.Test, err = strconv.Atoi(r.FormValue("test"))
+	p.Test, err = strconv.Atoi(testStr)
 	if err != nil {
 		return nil, err
 	}

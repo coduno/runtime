@@ -99,14 +99,18 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 		return nil, runner.err
 	}
 
-	simulator.wait().inspect().remove()
-	if simulator.err != nil {
-		return nil, simulator.err
+	exitCode := 1
+	if tr.Stderr == "" {
+		simulator.wait().inspect().remove()
+		if simulator.err != nil {
+			return nil, simulator.err
+		}
+		exitCode = simulator.c.State.ExitCode
 	}
 
 	return &model.TestStats{
-		ExitCode:   simulator.c.State.ExitCode,
-		Successful: simulator.c.State.ExitCode == 0,
+		ExitCode:   exitCode,
+		Successful: exitCode == 0,
 		Stdout:     tr.Stdout,
 		Stderr:     tr.Stderr,
 		Stats:      statsData,

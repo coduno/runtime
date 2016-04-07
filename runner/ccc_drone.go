@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"io"
+	"log"
 	"strconv"
 
 	"github.com/coduno/runtime/model"
@@ -86,6 +87,8 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 
 	if err == nil {
 		err = json.NewDecoder(stats).Decode(statsData)
+	} else {
+		log.Printf("Error getting stats: %s", err)
 	}
 
 	runner.inspect().remove()

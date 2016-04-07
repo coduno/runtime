@@ -86,7 +86,7 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	var statsData interface{}
 
 	if err == nil {
-		err = json.NewDecoder(stats).Decode(statsData)
+		err = json.NewDecoder(stats).Decode(&statsData)
 	} else {
 		log.Printf("Error getting stats: %s", err)
 	}

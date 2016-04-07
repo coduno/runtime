@@ -1,6 +1,8 @@
 package runner
 
 import (
+	"bytes"
+	"encoding/json"
 	"io"
 	"strconv"
 
@@ -27,88 +29,42 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 		},
 	}
 
-	str, err := runner.
+	runner.
 		createContainer().
 		start().
 		attach(ball).
 		wait().
-		logs()
+		inspect().
+		remove()
 
-	runner.inspect()
-
-	if err != nil {
-		return nil, err
+	if runner.err != nil {
+		return nil, runner.err
 	}
-
-	// NOTE(flowlo): Errors preventing removal are ignored.
-	runner.remove()
 
 	return &model.TestStats{
 		Successful: runner.c.State.ExitCode == 0,
-		Stdout:     str.Stdout,
-		Stderr:     str.Stderr,
 	}, nil
 }
 
 func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
-	ccc := &BestDockerRunner{
+	simulator := &BestDockerRunner{
 		config: &docker.Config{
 			Image: p.SimulatorImage,
 			Cmd:   []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
 		},
-		hostConfig: &docker.HostConfig{
-			PublishAllPorts: true,
-		},
 	}
 
-	str, err := normalCCCRun(ccc, ball, p.Image)
-	if err != nil {
-		return nil, err
-	}
-	ccc.wait()
-
-	if ccc.err != nil {
-		return nil, ccc.err
-	}
-
-	ccc.inspect()
-
-	// NOTE(flowlo): Errors preventing removal are ignored.
-	ccc.remove()
-
-	return &model.TestStats{
-		Successful: ccc.c.State.ExitCode == 0,
-		Stdout:     str.Stdout,
-		Stderr:     str.Stderr,
-	}, nil
-}
-
-func CCCRun(ball io.Reader, p *CCCParams) (*model.SimpleTestResult, error) {
-	return normalCCCRun(&BestDockerRunner{
-		config: &docker.Config{
-			Image: p.SimulatorImage,
-			Cmd:   []string{strconv.Itoa(p.Level), "1", "7000"},
-		},
-		hostConfig: &docker.HostConfig{
-			PublishAllPorts: true,
-		},
-	}, ball, p.Image)
-}
-
-func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (*model.SimpleTestResult, error) {
-	ccc.createContainer().start()
-	if ccc.err != nil {
-		return nil, ccc.err
+	simulator.createContainer().start()
+	if simulator.err != nil {
+		return nil, simulator.err
 	}
 
 	runner := &BestDockerRunner{
 		config: &docker.Config{
-			Image:     image,
-			OpenStdin: true,
-			StdinOnce: true,
+			Image: p.Image,
 		},
 		hostConfig: &docker.HostConfig{
-			Links: []string{ccc.c.ID + ":simulator"},
+			Links: []string{simulator.c.ID + ":simulator"},
 		},
 	}
 
@@ -119,10 +75,31 @@ func normalCCCRun(ccc *BestDockerRunner, ball io.Reader, image string) (*model.S
 		wait().
 		logs()
 
-	runner.inspect()
+	if err != nil {
+		return nil, err
+	}
 
-	// NOTE(flowlo): Errors preventing removal are ignored.
-	defer runner.remove()
+	stats := new(bytes.Buffer)
+	err = runner.download("/run/stats.log", stats)
+	var statsData interface{}
 
-	return tr, err
+	if err == nil {
+		err = json.NewDecoder(stats).Decode(statsData)
+	}
+
+	runner.inspect().remove()
+	if runner.err != nil {
+		return nil, runner.err
+	}
+
+	simulator.wait().inspect().remove()
+	if simulator.err != nil {
+		return nil, simulator.err
+	}
+
+	return &model.TestStats{
+		Successful: simulator.c.State.ExitCode == 0,
+		Stdout:     tr.Stdout,
+		Stderr:     tr.Stderr,
+	}, nil
 }

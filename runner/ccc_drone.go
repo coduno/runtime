@@ -52,6 +52,7 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 			Image: p.SimulatorImage,
 			Cmd:   []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
 		},
+		hostConfig: &docker.HostConfig{},
 	}
 
 	simulator.createContainer().start()

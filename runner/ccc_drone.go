@@ -102,8 +102,10 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	}
 
 	return &model.TestStats{
+		ExitCode:   simulator.c.State.ExitCode,
 		Successful: simulator.c.State.ExitCode == 0,
 		Stdout:     tr.Stdout,
 		Stderr:     tr.Stderr,
+		Stats:      statsData,
 	}, nil
 }

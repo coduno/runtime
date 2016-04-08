@@ -7,7 +7,7 @@ import (
 	"github.com/coduno/runtime/runner"
 )
 
-var supportedLanguages = []string{"py", "c", "cpp", "java", "csharp", "js", "php", "go", "groovy", "scala"}
+var supportedLanguages = []string{"py", "c", "cpp", "java", "csharp", "js", "php", "go", "groovy", "scala", "pascal"}
 
 func init() {
 	router.Handle("/simple", Adapt(Wrap(simpleRun), Files(true), Language(supportedLanguages), Method("POST")))

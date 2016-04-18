@@ -17,4 +17,5 @@ type Object interface {
 
 type Provider interface {
 	Create(ctx context.Context, name string, maxAge time.Duration, contentType string) (Object, error)
+	Open(ctx context.Context, name string) (Object, error)
 }

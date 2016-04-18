@@ -19,7 +19,7 @@ func logged(handler http.Handler) http.Handler {
 }
 
 func main() {
-	go runner.Scrape(10 * time.Minute)
+	go runner.Scrape(2 * time.Minute)
 
 	http.Handle("/", controllers.Router())
 	log.Println("Listening at", sock)

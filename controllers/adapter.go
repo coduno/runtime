@@ -34,7 +34,7 @@ func Files(tar bool) Adapter {
 			submissionPath := r.FormValue("files_gcs")
 			if submissionPath != "" {
 				p := s.NewProvider()
-				o, err := p.Create(context.TODO(), s.SubmissionsBucket()+"/"+submissionPath, time.Hour, "text/plain")
+				o, err := p.Create(context.TODO(), submissionPath, time.Hour, "text/plain")
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
@@ -118,7 +118,7 @@ func Test() Adapter {
 			}
 
 			p := s.NewProvider()
-			o, err := p.Create(context.TODO(), s.TestsBucket()+"/"+testPath, time.Hour, "text/plain")
+			o, err := p.Create(context.TODO(), testPath, time.Hour, "text/plain")
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return

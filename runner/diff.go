@@ -18,6 +18,17 @@ func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) 
 	return processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
 }
 
+func DiffValidate(have, want io.Reader) (*model.DiffTestResult, error) {
+	diffLines, ok, err := compare(want, have)
+	if err != nil {
+		return nil, err
+	}
+	return &model.DiffTestResult{
+		DiffLines: diffLines,
+		Successful: ok,
+	}, nil
+}
+
 func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTestResult, error) {
 	have := strings.NewReader(tr.Stdout)
 	diffLines, ok, err := compare(want, have)

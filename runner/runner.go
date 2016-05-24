@@ -123,7 +123,13 @@ func (r *BestDockerRunner) createContainer() *BestDockerRunner {
 		r.config.Env = append(r.config.Env, codunoFlag)
 	}
 
-	r.hostConfig.Privileged = false
+	if r.hostConfig == nil {
+		r.hostConfig = &docker.HostConfig{
+			Privileged:false,
+		}
+	} else{
+		r.hostConfig.Privileged = false
+	}
 
 	if r.hostConfig.Memory > memoryLimit {
 		r.hostConfig.Memory = memoryLimit

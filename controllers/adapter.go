@@ -31,7 +31,7 @@ func Files(tar bool) Adapter {
 	return func(hw *wrapper) {
 		oldWrapper := hw.h
 		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
-			submissionPath := r.FormValue("files_gcs")
+			submissionPath := r.FormValue("files")
 			if submissionPath != "" {
 				p := s.NewProvider()
 				o, err := p.Create(context.TODO(), submissionPath, time.Hour, "text/plain")
@@ -42,7 +42,7 @@ func Files(tar bool) Adapter {
 
 				rd.ball = o
 				if tar {
-					ball, err := gcsmaketar(o, fileNames[rd.language])
+					ball, err := gcsmaketar(o, fileNames[r.FormValue("language")])
 					if err != nil {
 						http.Error(w, err.Error(), http.StatusInternalServerError)
 						return
@@ -139,9 +139,10 @@ func Stdin() Adapter {
 				http.Error(w, "stdin path missing", http.StatusBadRequest)
 				return
 			}
-			stdin, err := getFile(stdinPath)
+			p := s.NewProvider()
+			stdin, err := p.Create(context.TODO(), stdinPath, time.Hour, "text/plain")
 			if err != nil {
-				http.Error(w, "get stdin file error: "+err.Error(), http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 			rd.stdin = stdin

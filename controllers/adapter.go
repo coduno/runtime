@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -25,61 +26,70 @@ func Method(method string) Adapter {
 	}
 }
 
-// TODO(victorbalan): refactor this, split into multiple functions, adapt for
-// multiple files
+type submittedFile struct {
+	name string
+	io.ReadCloser
+}
+
+func parseForm(r *http.Request) ([]submittedFile, error) {
+	r.ParseMultipartForm(16 << 20) // That's 16MiB.
+	files := r.MultipartForm.File["files"]
+
+	if files == nil {
+		fileNames := r.MultipartForm.Value["files"]
+		return resolveStorage(fileNames)
+	}
+
+	result := make([]submittedFile, len(files))
+	for i, f := range files {
+		rc, err := f.Open()
+		if err != nil {
+			return nil, err
+		}
+		result[i] = submittedFile{name: f.Filename, ReadCloser: rc}
+	}
+	return result, nil
+}
+
+func resolveStorage(files []string) ([]submittedFile, error) {
+	p := s.NewProvider()
+
+	result := make([]submittedFile, len(files))
+	for i, f := range files {
+		o, err := p.Open(context.TODO(), s.SubmissionsBucket()+"/"+f)
+		if err != nil {
+			return nil, err
+		}
+		result[i] = submittedFile{name: f, ReadCloser: o}
+	}
+	return result, nil
+}
+
+// TODO(victorbalan): Refactor this, split into multiple functions.
 func Files(tar bool) Adapter {
 	return func(hw *wrapper) {
 		oldWrapper := hw.h
 		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
-			submissionPath := r.FormValue("files")
-			if submissionPath != "" {
-				p := s.NewProvider()
-				o, err := p.Create(context.TODO(), submissionPath, time.Hour, "text/plain")
+			fs, err := parseForm(r)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+			}
+
+			if tar {
+				ball, err := tarobjects(fs)
 				if err != nil {
 					http.Error(w, err.Error(), http.StatusInternalServerError)
 					return
 				}
-
-				rd.ball = o
-				if tar {
-					ball, err := gcsmaketar(o, fileNames[r.FormValue("language")])
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-					rd.ball = ball
-				}
+				rd.ball = ball
 			} else {
-				if err := r.ParseMultipartForm(16 << 20); err != nil {
-					http.Error(w, "could not parse multipart form: "+err.Error(), http.StatusBadRequest)
+				if len(fs) < 1 {
+					http.Error(w, "expected a file", http.StatusBadRequest)
 					return
 				}
-
-				files, found := r.MultipartForm.File["files"]
-				if !found {
-					http.Error(w, "missing files", http.StatusBadRequest)
-					return
-				}
-				if len(files) != 1 {
-					http.Error(w, "we currently support only single file uploads", http.StatusBadRequest)
-					return
-				}
-				if tar {
-					ball, err := maketar(files[0], fileNames[rd.language])
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-					rd.ball = ball
-				} else {
-					file, err := getReader(files[0])
-					if err != nil {
-						http.Error(w, err.Error(), http.StatusInternalServerError)
-						return
-					}
-					rd.ball = file
-				}
+				rd.ball = fs[0]
 			}
+
 			oldWrapper(rd, w, r)
 		}
 		hw.h = h

@@ -15,17 +15,23 @@ import (
 	s "google.golang.org/cloud/storage"
 )
 
-type provider struct{}
-
-func (p provider) Create(ctx context.Context, name string, maxAge time.Duration, contentType string) (storage.Object, error) {
+func split(fullName string) (bucket string, name string, err error) {
 	i := strings.Index(name, "/")
 
 	if i == -1 {
-		return nil, errors.New("name invalid, must contain '/'")
+		return "", "", errors.New("name invalid, must contain '/'")
 	}
 
-	b := name[:i]
-	n := name[i+1:]
+	return name[:i], name[i+1:], nil
+}
+
+type provider struct{}
+
+func (p provider) Create(ctx context.Context, name string, maxAge time.Duration, contentType string) (storage.Object, error) {
+	b, n, err := split(name)
+	if err != nil {
+		return nil, err
+	}
 
 	a := s.ObjectAttrs{
 		ContentType:        contentType,
@@ -43,6 +49,25 @@ func (p provider) Create(ctx context.Context, name string, maxAge time.Duration,
 		w:   nil,
 		r:   nil,
 		a:   a,
+		ctx: ctx,
+	}, nil
+}
+
+func (p provider) Open(ctx context.Context, name string) (storage.Object, error) {
+	b, n, err := split(name)
+	if err != nil {
+		return nil, err
+	}
+
+	return &object{
+		b: b,
+		n: n,
+		w: nil,
+		r: nil,
+		a: s.ObjectAttrs{
+			Bucket: b,
+			Name:   n,
+		},
 		ctx: ctx,
 	}, nil
 }

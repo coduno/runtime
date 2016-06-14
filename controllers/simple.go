@@ -10,7 +10,7 @@ import (
 var supportedLanguages = []string{"py", "c", "cpp", "java", "csharp", "js", "php", "go", "groovy", "scala", "pascal"}
 
 func init() {
-	router.Handle("/simple", Adapt(Wrap(simpleRun), Files(true), Language(supportedLanguages), Method("POST")))
+	router.Handle("/simple", Adapt(Wrap(simpleRun), MakeTar(), CodeFiles(), Language(supportedLanguages), Method("POST")))
 }
 
 func simpleRun(rd requestData, w http.ResponseWriter, r *http.Request) {

@@ -24,7 +24,6 @@ var fileNames = map[string]string{
 	"go":     "app.go",
 	"groovy": "app.groovy",
 	"scala":  "Application.scala",
-	"pascal": "app.pas",
 }
 
 func contains(s string, strings []string) bool {

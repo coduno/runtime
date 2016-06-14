@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 
+	"github.com/coduno/runtime/model"
 	"github.com/gorilla/mux"
 )
 
@@ -14,6 +15,7 @@ type requestParams struct {
 
 type requestData struct {
 	ball        io.Reader
+	files       []model.CodeFile
 	language    string
 	test, stdin io.Reader
 }

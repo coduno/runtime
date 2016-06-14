@@ -1,11 +1,14 @@
 package controllers
 
 import (
+	"archive/tar"
+	"bytes"
 	"net/http"
 	"time"
 
 	"golang.org/x/net/context"
 
+	"github.com/coduno/runtime/model"
 	s "github.com/coduno/runtime/storage/google"
 )
 
@@ -18,6 +21,59 @@ func Method(method string) Adapter {
 			if r.Method != method {
 				http.Error(w, r.Method+" not allowed", http.StatusMethodNotAllowed)
 				return
+			}
+			oldWrapper(rd, w, r)
+		}
+		hw.h = h
+	}
+}
+
+func MakeTar() Adapter {
+	return func(hw *wrapper) {
+		oldWrapper := hw.h
+		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
+			buf := new(bytes.Buffer)
+			tarw := tar.NewWriter(buf)
+
+			for _, fh := range rd.files {
+				if err := tarw.WriteHeader(&tar.Header{
+					Name: fh.Filename,
+					Mode: 0600,
+					Size: fh.Size,
+				}); err != nil {
+					http.Error(w, "maketar error"+err.Error(), http.StatusInternalServerError)
+				}
+				tarw.Write(fh.Bytes)
+			}
+			rd.ball = bytes.NewReader(buf.Bytes())
+			oldWrapper(rd, w, r)
+		}
+		hw.h = h
+	}
+}
+
+func CodeFiles() Adapter {
+	return func(hw *wrapper) {
+		oldWrapper := hw.h
+		h := func(rd requestData, w http.ResponseWriter, r *http.Request) {
+			submissionPath := r.FormValue("files_gcs")
+			if submissionPath != "" {
+				// Load gcs files
+			} else {
+				files, found := r.MultipartForm.File["files"]
+				if !found {
+					http.Error(w, "missing files", http.StatusBadRequest)
+					return
+				}
+				rd.files = make([]model.CodeFile, len(files))
+				for i, file := range files {
+					codeFile, err := model.NewCodeFile(file)
+					if err != nil {
+						http.Error(w, "file extraction error: "+err.Error(), http.StatusInternalServerError)
+						return
+					}
+					rd.files[i] = codeFile
+				}
 			}
 			oldWrapper(rd, w, r)
 		}

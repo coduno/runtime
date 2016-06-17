@@ -56,7 +56,7 @@ func resolveStorage(files []string) ([]submittedFile, error) {
 
 	result := make([]submittedFile, len(files))
 	for i, f := range files {
-		o, err := p.Open(context.TODO(), s.SubmissionsBucket()+"/"+f)
+		o, err := p.Open(context.TODO(), f)
 		if err != nil {
 			return nil, err
 		}

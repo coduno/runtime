@@ -29,7 +29,7 @@ func dispatch(simulatorImage string, handler func(rd requestData, w http.Respons
 		}
 		if !params.Validate {
 			var err error
-			if rd.ball, err = readermaketar(rd.ball, fileNames[rd.language]); err != nil {
+			if rd.ball, err = tarobjects(rd.files); err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}

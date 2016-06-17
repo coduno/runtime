@@ -14,6 +14,7 @@ type requestParams struct {
 
 type requestData struct {
 	ball        io.Reader
+	files       []submittedFile
 	language    string
 	test, stdin io.Reader
 }

@@ -87,7 +87,7 @@ func Files(tar bool) Adapter {
 					http.Error(w, "expected a file", http.StatusBadRequest)
 					return
 				}
-				rd.ball = fs[0]
+				rd.files = fs
 			}
 
 			oldWrapper(rd, w, r)

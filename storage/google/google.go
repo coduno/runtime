@@ -16,13 +16,13 @@ import (
 )
 
 func split(fullName string) (bucket string, name string, err error) {
-	i := strings.Index(name, "/")
+	i := strings.Index(fullName, "/")
 
 	if i == -1 {
 		return "", "", errors.New("name invalid, must contain '/'")
 	}
 
-	return name[:i], name[i+1:], nil
+	return fullName[:i], fullName[i+1:], nil
 }
 
 type provider struct{}

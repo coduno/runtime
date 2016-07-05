@@ -1,8 +1,10 @@
 package controllers
 
 import (
+	"errors"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"golang.org/x/net/context"
@@ -33,12 +35,11 @@ type submittedFile struct {
 
 func parseForm(r *http.Request) ([]submittedFile, error) {
 	r.ParseMultipartForm(16 << 20) // That's 16MiB.
-	files := r.MultipartForm.File["files"]
 
-	if files == nil {
-		fileNames := r.MultipartForm.Value["files"]
-		return resolveStorage(fileNames)
+	if r.MultipartForm == nil {
+		return resolveStorage(r.Form["files"])
 	}
+	files := r.MultipartForm.File["files"]
 
 	result := make([]submittedFile, len(files))
 	for i, f := range files {
@@ -60,7 +61,17 @@ func resolveStorage(files []string) ([]submittedFile, error) {
 		if err != nil {
 			return nil, err
 		}
-		result[i] = submittedFile{name: f, ReadCloser: o}
+		index := strings.Index(f, "/")
+		// name must have 2 slashes
+		// eg. coduno-submissions/uuid/filename
+		if index == -1 || index == strings.LastIndex(f, "/") {
+			return nil, errors.New("filename not valid: " + f)
+		}
+
+		filename := f[index+1:]
+		filename = filename[strings.Index(filename, "/")+1:]
+
+		result[i] = submittedFile{name: filename, ReadCloser: o}
 	}
 	return result, nil
 }

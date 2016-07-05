@@ -39,12 +39,20 @@ func compare(want, have io.Reader) ([]int, bool, error) {
 	if err != nil {
 		return nil, false, err
 	}
+
+	if bytes.HasSuffix(h, []byte("\n")) {
+		h = bytes.TrimSuffix(h, []byte("\n"))
+	}
+	if bytes.HasSuffix(h, []byte("\r")) {
+		h = bytes.TrimSuffix(h, []byte("\r"))
+	}
 	w = bytes.Replace(w, []byte("\r\n"), []byte("\n"), -1)
 	h = bytes.Replace(h, []byte("\r\n"), []byte("\n"), -1)
 	wb := bytes.Split(w, []byte("\n"))
 	hb := bytes.Split(h, []byte("\n"))
 
 	if len(wb) != len(hb) {
+		fmt.Println(len(wb), len(hb))
 		return nil, false, nil
 	}
 

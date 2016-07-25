@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"log"
 	"encoding/json"
 	"net/http"
 
@@ -12,7 +13,9 @@ func init() {
 }
 
 func ioRun(rd requestData, w http.ResponseWriter, r *http.Request) {
+	log.Println("[controllers] [io.go] ioRun")
 	image := "coduno/fingerprint-" + rd.language
+	log.Println("[controllers] [io.go] spinning up docker container", image)
 	tr, err := runner.IORun(rd.ball, rd.test, rd.stdin, image)
 	if err != nil {
 		http.Error(w, "run error: "+err.Error(), http.StatusInternalServerError)

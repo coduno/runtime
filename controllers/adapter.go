@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"log"
 
 	"golang.org/x/net/context"
 
@@ -137,6 +138,8 @@ func Test() Adapter {
 				http.Error(w, "test path missing.", http.StatusBadRequest)
 				return
 			}
+
+			log.Printf("Using test path %q\n", testPath)
 
 			p := s.NewProvider()
 			o, err := p.Create(context.TODO(), testPath, time.Hour, "text/plain")

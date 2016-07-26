@@ -2,7 +2,6 @@ package runner
 
 import (
 	"io"
-	"log"
 
 	"github.com/coduno/runtime/model"
 	"github.com/fsouza/go-dockerclient"
@@ -29,7 +28,5 @@ func IORun(ball, test, stdin io.Reader, image string) (*model.DiffTestResult, er
 		return nil, err
 	}
 
-	log.Println("[runner] [io.go] IORun")
-	
 	return processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
 }

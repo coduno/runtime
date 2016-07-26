@@ -1,13 +1,16 @@
 package runner
 
 import (
-	"io"
-	"strings"
-	"log"
 	"bufio"
+	"io"
+	"log"
+	"os"
+	"strings"
 
 	"github.com/coduno/runtime/model"
 )
+
+var logger = log.New(os.Stderr, "", log.LstdFlags | log.LUTC | log.Lshortfile)
 
 func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) {
 	str, err := SimpleRun(ball, image)
@@ -19,7 +22,6 @@ func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) 
 
 func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTestResult, error) {
 	have := strings.NewReader(tr.Stdout)
-	log.Println("[runner] [diff.go] processDiffResults compare")
 	mismatch, err := compare(want, have)
 	if err != nil {
 		return nil, err
@@ -57,9 +59,6 @@ func compare(want, have io.Reader) (*model.Mismatch, error) {
 		h := sch.Text()
 		w := scw.Text()
 
-		log.Println("[runner] [diff.go] processDiffResults W", w)
-		log.Println("[runner] [diff.go] processDiffResults H", h)
-
 		l := len(w)
 		if len(h) < l {
 			l = len(h)
@@ -67,12 +66,13 @@ func compare(want, have io.Reader) (*model.Mismatch, error) {
 
 		for offset := 1; offset <= l; offset++ {
 			if w[offset - 1] != h[offset - 1] {
+				logger.Printf("Mismatch %q (have) against %q (want) at %d:%d\n", h, w, line, offset)
 				return &model.Mismatch{line, offset}, nil
 			}
 		}
 
 		if len(h) != len(w) {
-			log.Println("[runner] [diff.go] processDiffResults length of the line differs (want:", len(w), "have:", len(h), ")")
+			logger.Printf("Length mismatch %d (have) against %d (want) at line %d\n", len(h), len(w), line)
 			return &model.Mismatch{line, l}, nil
 		}
 	}

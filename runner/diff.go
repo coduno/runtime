@@ -1,15 +1,17 @@
 package runner
 
 import (
-	"bytes"
-	"fmt"
+	"bufio"
 	"io"
-	"io/ioutil"
+	"log"
+	"os"
 	"strings"
 
 	"github.com/coduno/runtime/model"
 	"github.com/fsouza/go-dockerclient"
 )
+
+var logger = log.New(os.Stderr, "", log.LstdFlags | log.LUTC | log.Lshortfile)
 
 func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) {
 	runner := &Runner{
@@ -34,44 +36,60 @@ func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) 
 
 func processDiffResults(tr *model.DiffTestResult, want io.Reader) (*model.DiffTestResult, error) {
 	have := strings.NewReader(tr.Stdout)
-	diffLines, ok, err := compare(want, have)
+	mismatch, err := compare(want, have)
 	if err != nil {
 		return nil, err
 	}
-	tr.DiffLines = diffLines
-	tr.Successful = ok
+
+	tr.Successful = mismatch == nil
+	if !tr.Successful {
+		tr.Mismatch = *mismatch
+	}
 
 	return tr, nil
 }
 
-func compare(want, have io.Reader) ([]int, bool, error) {
-	w, err := ioutil.ReadAll(want)
-	if err != nil {
-		return nil, false, err
-	}
-	h, err := ioutil.ReadAll(have)
-	if err != nil {
-		return nil, false, err
-	}
-	w = bytes.Replace(w, []byte("\r\n"), []byte("\n"), -1)
-	h = bytes.Replace(h, []byte("\r\n"), []byte("\n"), -1)
-	wb := bytes.Split(w, []byte("\n"))
-	hb := bytes.Split(h, []byte("\n"))
+func compare(want, have io.Reader) (*model.Mismatch, error) {
+	sch := bufio.NewScanner(have)
+	sch.Split(bufio.ScanLines)
+	scw := bufio.NewScanner(want)
+	scw.Split(bufio.ScanLines)
 
-	if len(wb) != len(hb) {
-		return nil, false, nil
-	}
+	for line := 1; ; line++ {
+		sh := sch.Scan()
+		sw := scw.Scan()
+		if !sh && !sw {
+			if sch.Err() == nil && scw.Err() == nil {
+				return nil, nil
+			}
+		}
+		if sch.Err() != nil {
+			return nil, sch.Err()
+		}
+		if scw.Err() != nil {
+			return nil, scw.Err()
+		}
 
-	var diff []int
-	ok := true
-	for i := 0; i < len(wb); i++ {
-		// fmt.Println(string(wb[i]), string(hb[i]))
-		if bytes.Compare(wb[i], hb[i]) != 0 {
-			diff = append(diff, i)
-			ok = false
+		h := sch.Text()
+		w := scw.Text()
+
+		l := len(w)
+		if len(h) < l {
+			l = len(h)
+		}
+
+		for offset := 1; offset <= l; offset++ {
+			if w[offset - 1] != h[offset - 1] {
+				logger.Printf("Mismatch %q (have) against %q (want) at %d:%d\n", h, w, line, offset)
+				return &model.Mismatch{line, offset}, nil
+			}
+		}
+
+		if len(h) != len(w) {
+			logger.Printf("Length mismatch %d (have) against %d (want) at line %d\n", len(h), len(w), line)
+			return &model.Mismatch{line, l}, nil
 		}
 	}
-	fmt.Println(diff)
 
-	return diff, ok, nil
+	return nil, nil
 }

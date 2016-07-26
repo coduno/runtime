@@ -3,13 +3,11 @@ package runner
 import (
 	"bytes"
 	"errors"
-	"fmt"
 	"io"
 	"log"
 	"os"
 	"time"
 
-	"github.com/coduno/runtime/env"
 	"github.com/coduno/runtime/model"
 	"github.com/fsouza/go-dockerclient"
 )
@@ -69,7 +67,7 @@ func Scrape(d time.Duration) {
 	}
 }
 
-type BestDockerRunner struct {
+type Runner struct {
 	c                *docker.Container
 	config           *docker.Config
 	hostConfig       *docker.HostConfig
@@ -77,7 +75,7 @@ type BestDockerRunner struct {
 	err              error
 }
 
-func (r *BestDockerRunner) prepare() *BestDockerRunner {
+func (r *Runner) prepare() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -103,7 +101,7 @@ func (r *BestDockerRunner) prepare() *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) createContainer() *BestDockerRunner {
+func (r *Runner) createContainer() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -118,7 +116,7 @@ func (r *BestDockerRunner) createContainer() *BestDockerRunner {
 		r.hostConfig = &docker.HostConfig{
 			Privileged:false,
 		}
-	} else{
+	} else {
 		r.hostConfig.Privileged = false
 	}
 
@@ -137,7 +135,7 @@ func (r *BestDockerRunner) createContainer() *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) upload(ball io.Reader) *BestDockerRunner {
+func (r *Runner) upload(ball io.Reader) *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -153,7 +151,7 @@ func (r *BestDockerRunner) upload(ball io.Reader) *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) start() *BestDockerRunner {
+func (r *Runner) start() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -167,7 +165,7 @@ func (r *BestDockerRunner) start() *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) attach(stream io.Reader) *BestDockerRunner {
+func (r *Runner) attach(stream io.Reader) *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -184,7 +182,7 @@ func (r *BestDockerRunner) attach(stream io.Reader) *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) wait() *BestDockerRunner {
+func (r *Runner) wait() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -211,7 +209,7 @@ func (r *BestDockerRunner) wait() *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) logs() (*model.SimpleTestResult, error) {
+func (r *Runner) logs() (*model.SimpleTestResult, error) {
 	if r.err != nil {
 		return nil, r.err
 	}
@@ -248,7 +246,7 @@ func (r *BestDockerRunner) logs() (*model.SimpleTestResult, error) {
 	}, nil
 }
 
-func (r *BestDockerRunner) inspect() *BestDockerRunner {
+func (r *Runner) inspect() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -260,7 +258,7 @@ func (r *BestDockerRunner) inspect() *BestDockerRunner {
 	return r
 }
 
-func (r *BestDockerRunner) remove() error {
+func (r *Runner) remove() error {
 	if r.err != nil {
 		return r.err
 	}
@@ -274,7 +272,7 @@ func (r *BestDockerRunner) remove() error {
 	})
 }
 
-func (r *BestDockerRunner) download(path string, w io.Writer) error {
+func (r *Runner) download(path string, w io.Writer) error {
 	if r.err != nil {
 		return r.err
 	}

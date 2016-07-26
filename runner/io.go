@@ -8,7 +8,7 @@ import (
 )
 
 func IORun(ball, test, stdin io.Reader, image string) (*model.DiffTestResult, error) {
-	runner := &BestDockerRunner{
+	runner := &Runner{
 		config: &docker.Config{
 			Image:     image,
 			OpenStdin: true,

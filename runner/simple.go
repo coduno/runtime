@@ -8,7 +8,7 @@ import (
 )
 
 func SimpleRun(ball io.Reader, image string) (*model.SimpleTestResult, error) {
-	runner := &BestDockerRunner{
+	runner := &Runner{
 		config: &docker.Config{
 			Image: image,
 		},

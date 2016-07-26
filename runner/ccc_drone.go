@@ -18,7 +18,7 @@ type CCCParams struct {
 }
 
 func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
-	runner := &BestDockerRunner{
+	runner := &Runner{
 		config: &docker.Config{
 			Image:     p.SimulatorImage,
 			OpenStdin: true,
@@ -48,7 +48,7 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 }
 
 func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
-	simulator := &BestDockerRunner{
+	simulator := &Runner{
 		config: &docker.Config{
 			Image: p.SimulatorImage,
 			Cmd:   []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
@@ -61,7 +61,7 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 		return nil, simulator.err
 	}
 
-	runner := &BestDockerRunner{
+	runner := &Runner{
 		config: &docker.Config{
 			Image: p.Image,
 		},

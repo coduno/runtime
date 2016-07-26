@@ -9,7 +9,7 @@ import (
 
 func IORun(ball, test, stdin io.Reader, image string) (*model.DiffTestResult, error) {
 	runner := &Runner{
-		config: &docker.Config{
+		Config: &docker.Config{
 			Image:     image,
 			OpenStdin: true,
 			StdinOnce: true,
@@ -17,12 +17,12 @@ func IORun(ball, test, stdin io.Reader, image string) (*model.DiffTestResult, er
 	}
 
 	str, err := runner.
-		createContainer().
-		upload(ball).
-		start().
-		attach(stdin).
-		wait().
-		logs()
+		CreateContainer().
+		Upload(ball).
+		Start().
+		Attach(stdin).
+		Wait().
+		Logs()
 
 	if err != nil {
 		return nil, err

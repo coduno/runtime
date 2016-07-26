@@ -69,7 +69,7 @@ func Scrape(d time.Duration) {
 
 type Runner struct {
 	c                *docker.Container
-	config           *docker.Config
+	Config           *docker.Config
 	hostConfig       *docker.HostConfig
 	started, stopped time.Time
 	err              error
@@ -80,36 +80,36 @@ func (r *Runner) prepare() *Runner {
 		return r
 	}
 
-	_, r.err = dc.InspectImage(r.config.Image)
+	_, r.err = dc.InspectImage(r.Config.Image)
 	if r.err == nil {
 		return r
 	}
 
 	if r.err != docker.ErrNoSuchImage {
-		log.Printf("Error inspecting image %q: %s\n", r.config.Image, r.err)
+		log.Printf("Error inspecting image %q: %s\n", r.Config.Image, r.err)
 		return r
 	}
 
 	r.err = dc.PullImage(docker.PullImageOptions{
-		Repository:   r.config.Image,
+		Repository:   r.Config.Image,
 		OutputStream: os.Stderr,
 	}, docker.AuthConfiguration{})
 
 	if r.err != nil {
-		log.Printf("Error pulling image %q: %s\n", r.config.Image, r.err)
+		log.Printf("Error pulling image %q: %s\n", r.Config.Image, r.err)
 	}
 	return r
 }
 
-func (r *Runner) createContainer() *Runner {
+func (r *Runner) CreateContainer() *Runner {
 	if r.err != nil {
 		return r
 	}
 
-	if r.config.Env == nil {
-		r.config.Env = []string{codunoFlag}
+	if r.Config.Env == nil {
+		r.Config.Env = []string{codunoFlag}
 	} else {
-		r.config.Env = append(r.config.Env, codunoFlag)
+		r.Config.Env = append(r.Config.Env, codunoFlag)
 	}
 
 	if r.hostConfig == nil {
@@ -125,17 +125,17 @@ func (r *Runner) createContainer() *Runner {
 	}
 
 	r.c, r.err = dc.CreateContainer(docker.CreateContainerOptions{
-		Config:     r.config,
+		Config:     r.Config,
 		HostConfig: r.hostConfig,
 	})
 
 	if r.err != nil {
-		log.Printf("Failed to create container from image %q: %s\n", r.config.Image, r.err)
+		log.Printf("Failed to create container from image %q: %s\n", r.Config.Image, r.err)
 	}
 	return r
 }
 
-func (r *Runner) upload(ball io.Reader) *Runner {
+func (r *Runner) Upload(ball io.Reader) *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -151,7 +151,7 @@ func (r *Runner) upload(ball io.Reader) *Runner {
 	return r
 }
 
-func (r *Runner) start() *Runner {
+func (r *Runner) Start() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -165,7 +165,7 @@ func (r *Runner) start() *Runner {
 	return r
 }
 
-func (r *Runner) attach(stream io.Reader) *Runner {
+func (r *Runner) Attach(stream io.Reader) *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -182,7 +182,7 @@ func (r *Runner) attach(stream io.Reader) *Runner {
 	return r
 }
 
-func (r *Runner) wait() *Runner {
+func (r *Runner) Wait() *Runner {
 	if r.err != nil {
 		return r
 	}
@@ -209,7 +209,7 @@ func (r *Runner) wait() *Runner {
 	return r
 }
 
-func (r *Runner) logs() (*model.SimpleTestResult, error) {
+func (r *Runner) Logs() (*model.SimpleTestResult, error) {
 	if r.err != nil {
 		return nil, r.err
 	}

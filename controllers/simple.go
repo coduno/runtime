@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/coduno/runtime/runner"
+	"github.com/fsouza/go-dockerclient"
 )
 
 var supportedLanguages = []string{"py", "c", "cpp", "java", "csharp", "js", "php", "go", "groovy", "scala", "pascal"}
@@ -14,8 +15,20 @@ func init() {
 }
 
 func simpleRun(rd requestData, w http.ResponseWriter, r *http.Request) {
-	image := "coduno/fingerprint-" + rd.language
-	tr, err := runner.SimpleRun(rd.ball, image)
+
+	runner := &runner.Runner{
+		Config: &docker.Config{
+			Image: "coduno/fingerprint-" + rd.language,
+		},
+	}
+
+	tr, err := runner.
+		CreateContainer().
+		Upload(rd.ball).
+		Start().
+		Wait().
+		Logs()
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

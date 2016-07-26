@@ -19,7 +19,7 @@ type CCCParams struct {
 
 func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	runner := &Runner{
-		config: &docker.Config{
+		Config: &docker.Config{
 			Image:     p.SimulatorImage,
 			OpenStdin: true,
 			StdinOnce: true,
@@ -31,10 +31,10 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	}
 
 	runner.
-		createContainer().
-		start().
-		attach(ball).
-		wait().
+		CreateContainer().
+		Start().
+		Attach(ball).
+		Wait().
 		inspect().
 		remove()
 
@@ -49,20 +49,20 @@ func CCCValidate(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 
 func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	simulator := &Runner{
-		config: &docker.Config{
+		Config: &docker.Config{
 			Image: p.SimulatorImage,
 			Cmd:   []string{strconv.Itoa(p.Level), strconv.Itoa(p.Test), "7000"},
 		},
 		hostConfig: &docker.HostConfig{},
 	}
 
-	simulator.createContainer().start()
+	simulator.CreateContainer().Start()
 	if simulator.err != nil {
 		return nil, simulator.err
 	}
 
 	runner := &Runner{
-		config: &docker.Config{
+		Config: &docker.Config{
 			Image: p.Image,
 		},
 		hostConfig: &docker.HostConfig{
@@ -71,11 +71,11 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 	}
 
 	tr, err := runner.
-		createContainer().
-		upload(ball).
-		start().
-		wait().
-		logs()
+		CreateContainer().
+		Upload(ball).
+		Start().
+		Wait().
+		Logs()
 
 	if err != nil {
 		return nil, err
@@ -101,7 +101,7 @@ func CCCTest(ball io.Reader, p *CCCParams) (*model.TestStats, error) {
 
 	exitCode := 1
 	if tr.Stderr == "" {
-		simulator.wait().inspect().remove()
+		simulator.Wait().inspect().remove()
 		if simulator.err != nil {
 			return nil, simulator.err
 		}

@@ -8,13 +8,27 @@ import (
 	"strings"
 
 	"github.com/coduno/runtime/model"
+	"github.com/fsouza/go-dockerclient"
 )
 
 func DiffRun(ball, test io.Reader, image string) (*model.DiffTestResult, error) {
-	str, err := SimpleRun(ball, image)
+	runner := &Runner{
+		Config: &docker.Config{
+			Image: image,
+		},
+	}
+
+	str, err := runner.
+		CreateContainer().
+		Upload(ball).
+		Start().
+		Wait().
+		Logs()
+
 	if err != nil {
 		return nil, err
 	}
+
 	return processDiffResults(&model.DiffTestResult{SimpleTestResult: *str}, test)
 }
 

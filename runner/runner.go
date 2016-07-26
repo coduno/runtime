@@ -27,16 +27,7 @@ type waitResult struct {
 
 func init() {
 	var err error
-	if !env.IsDevAppServer() {
-		dc, err = docker.NewClientFromEnv()
-	} else {
-		// TODO(flowlo): Is this still used?
-		path := os.Getenv("DOCKER_CERT_PATH")
-		ca := fmt.Sprintf("%s/ca.pem", path)
-		cert := fmt.Sprintf("%s/cert.pem", path)
-		key := fmt.Sprintf("%s/key.pem", path)
-		dc, err = docker.NewTLSClient("http://192.168.99.100:2376", cert, key, ca)
-	}
+	dc, err = docker.NewClientFromEnv()
 	if err != nil {
 		panic(err)
 	}
